@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 // Backend integration: AI chat + correction (/api/chat), text-to-speech (/api/tts),
 // speech-to-text recording (/api/stt). useRecorder mirrors the old useSpeech API.
-import { tutorReply, roleReply, speak, useRecorder as useSpeech, grammarLesson, generateVocab, lessonContent } from "../lib/api";
+import { tutorReply, roleReply, speak, useRecorder as useSpeech, grammarLesson, generateVocab, lessonContent, translateText } from "../lib/api";
 
 /* ----------------------------------------------------------------------------
    English for Success — Aprenda inglês com IA
@@ -937,6 +937,13 @@ function SimScreen() {
     setBusy(false);
   };
   const mic = () => speech.listening ? speech.stop() : speech.start((t) => t && setInput(t));
+  const toggleTrans = async (i) => {
+    const msg = msgs[i];
+    if (msg.translation) { setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, showT: !x.showT } : x)); return; }
+    setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, tLoading: true } : x));
+    try { const t = await translateText(msg.text); setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, translation: t, showT: true, tLoading: false } : x)); }
+    catch (e) { setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, tLoading: false } : x)); }
+  };
 
   if (!active) return (
     <div className="f-scroll">
@@ -973,7 +980,11 @@ function SimScreen() {
               <div className="f-av" style={{ background: "linear-gradient(135deg,#5C7CFA,#8AA2FF)" }}><active.icon size={14} /></div>
               <div className="f-bubblewrap">
                 <div className="f-bubble ai">{m.text}</div>
-                <div className="f-bubactions"><button className="f-tiny" onClick={() => speak(m.text)}><Volume2 size={13} /> Ouvir</button></div>
+                <div className="f-bubactions">
+                  <button className="f-tiny" onClick={() => speak(m.text)}><Volume2 size={13} /> Ouvir</button>
+                  <button className={"f-tiny" + (m.showT ? " on" : "")} onClick={() => toggleTrans(i)} disabled={m.tLoading}><Languages size={13} /> {m.tLoading ? "..." : m.showT ? "Ocultar" : "Traduzir"}</button>
+                </div>
+                {m.showT && m.translation && <div className="f-trans">{m.translation}</div>}
               </div>
             </div>
           ))}
@@ -1153,6 +1164,13 @@ function MiniRoleplay({ scenario, onBack }) {
     setBusy(false);
   };
   const mic = () => speech.listening ? speech.stop() : speech.start((t) => t && setInput(t));
+  const toggleTrans = async (i) => {
+    const msg = msgs[i];
+    if (msg.translation) { setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, showT: !x.showT } : x)); return; }
+    setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, tLoading: true } : x));
+    try { const t = await translateText(msg.text); setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, translation: t, showT: true, tLoading: false } : x)); }
+    catch (e) { setMsgs((mm) => mm.map((x, k) => k === i ? { ...x, tLoading: false } : x)); }
+  };
   return (
     <>
       <div className="f-top">
@@ -1169,7 +1187,11 @@ function MiniRoleplay({ scenario, onBack }) {
               <div className="f-av" style={{ background: "linear-gradient(135deg,#5C7CFA,#8AA2FF)" }}><Icon size={14} /></div>
               <div className="f-bubblewrap">
                 <div className="f-bubble ai">{m.text}</div>
-                <div className="f-bubactions"><button className="f-tiny" onClick={() => speak(m.text)}><Volume2 size={13} /> Ouvir</button></div>
+                <div className="f-bubactions">
+                  <button className="f-tiny" onClick={() => speak(m.text)}><Volume2 size={13} /> Ouvir</button>
+                  <button className={"f-tiny" + (m.showT ? " on" : "")} onClick={() => toggleTrans(i)} disabled={m.tLoading}><Languages size={13} /> {m.tLoading ? "..." : m.showT ? "Ocultar" : "Traduzir"}</button>
+                </div>
+                {m.showT && m.translation && <div className="f-trans">{m.translation}</div>}
               </div>
             </div>
           ))}
