@@ -582,7 +582,7 @@ function ChatScreen() {
             <div className="f-row" key={i}>
               <div className="f-av"><Sparkles size={15} /></div>
               <div className="f-bubblewrap">
-                <div className="f-bubble ai"><div className="name">LUMI</div>{m.text}</div>
+                <div className="f-bubble ai"><div className="name">DELAGASSA</div>{m.text}</div>
                 {!m.error && (
                   <div className="f-bubactions">
                     <button className="f-tiny" onClick={() => speak(m.text)}><Volume2 size={13} /> Ouvir</button>
@@ -626,12 +626,12 @@ function ChatScreen() {
 
 /* ============================ PRONUNCIATION ============================ */
 const PRON_PHRASES = [
-  "I would like a cup of coffee, please.",
-  "Could you tell me where the station is?",
-  "I've been learning English for two years.",
-  "What time does the next train leave?",
-  "I'm really looking forward to the weekend.",
-  "Can I have the bill, please?",
+  { en: "I would like a cup of coffee, please.", pt: "Eu gostaria de uma xícara de café, por favor." },
+  { en: "Could you tell me where the station is?", pt: "Você poderia me dizer onde fica a estação?" },
+  { en: "I've been learning English for two years.", pt: "Eu estou aprendendo inglês há dois anos." },
+  { en: "What time does the next train leave?", pt: "Que horas sai o próximo trem?" },
+  { en: "I'm really looking forward to the weekend.", pt: "Estou muito ansioso pelo fim de semana." },
+  { en: "Can I have the bill, please?", pt: "Pode trazer a conta, por favor?" },
 ];
 function PronScreen() {
   const { bump, addXp, profile } = useApp();
@@ -639,7 +639,9 @@ function PronScreen() {
   const [idx, setIdx] = useState(0);
   const [result, setResult] = useState(null);
   const [scored, setScored] = useState(false);
-  const phrase = PRON_PHRASES[idx];
+  const [showT, setShowT] = useState(false);
+  const item = PRON_PHRASES[idx];
+  const phrase = item.en;
 
   const listen = () => {
     if (speech.listening) { speech.stop(); return; }
@@ -651,7 +653,7 @@ function PronScreen() {
       if (r.overall >= 50) { bump("pron", 1); bump("lessons", 1); addXp(15); }
     });
   };
-  const next = () => { setIdx((idx + 1) % PRON_PHRASES.length); setResult(null); setScored(false); };
+  const next = () => { setIdx((idx + 1) % PRON_PHRASES.length); setResult(null); setScored(false); setShowT(false); };
 
   const color = (v) => v >= 80 ? "var(--ok)" : v >= 55 ? "var(--gold)" : "var(--err)";
 
@@ -676,7 +678,11 @@ function PronScreen() {
               <span key={i} style={{ color: result.matched[i] ? "var(--ok)" : "var(--ink3)" }}>{w} </span>
             )) : phrase}
           </p>
-          <button className="f-tiny" style={{ margin: "0 auto" }} onClick={() => speak(phrase)}><Volume2 size={14} /> Ouvir a frase</button>
+          <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="f-tiny" onClick={() => speak(phrase)}><Volume2 size={14} /> Ouvir a frase</button>
+            <button className={"f-tiny" + (showT ? " on" : "")} onClick={() => setShowT((v) => !v)}><Languages size={14} /> {showT ? "Ocultar" : "Traduzir"}</button>
+          </div>
+          {showT && <p className="f-muted" style={{ fontSize: 14, marginTop: 12, fontStyle: "italic" }}>{item.pt}</p>}
         </div>
 
         <div style={{ display: "flex", justifyContent: "center", margin: "24px 0 8px" }}>
@@ -1247,9 +1253,10 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
   const [qi, setQi] = useState(0);
   const [picked, setPicked] = useState(null);
   const [correct, setCorrect] = useState(0);
+  const [showQT, setShowQT] = useState(false);
 
   const load = async () => {
-    setBusy(true); setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setData(null);
+    setBusy(true); setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setData(null); setShowQT(false);
     try {
       const d = await lessonContent(lesson.focus, profile);
       if (!d || !Array.isArray(d.questions) || d.questions.length === 0) setErr(true);
@@ -1269,7 +1276,7 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
     if (q && idx === q.answer) setCorrect((c) => c + 1);
   };
   const next = () => {
-    if (qi + 1 < qs.length) { setQi(qi + 1); setPicked(null); }
+    if (qi + 1 < qs.length) { setQi(qi + 1); setPicked(null); setShowQT(false); }
     else setPhase("result");
   };
   useEffect(() => { if (phase === "result" && pass) completeLesson(lessonId); /* eslint-disable-next-line */ }, [phase]);
@@ -1315,7 +1322,9 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
             <>
               <div className="f-xpbar" style={{ marginBottom: 16 }}><div className="f-xpfill" style={{ width: `${(qi / qs.length) * 100}%`, background: "linear-gradient(90deg,#FFA040,var(--coral))" }} /></div>
               <p className="f-faint" style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 8 }}>Pergunta {qi + 1} de {qs.length}</p>
-              <div className="f-card f-pad" style={{ padding: 16, marginBottom: 14, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", lineHeight: 1.4 }}>{q.q}</div>
+              <div className="f-card f-pad" style={{ padding: 16, marginBottom: 10, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", lineHeight: 1.4 }}>{q.q}</div>
+              {q.q_pt && <button className={"f-tiny" + (showQT ? " on" : "")} style={{ marginBottom: 14 }} onClick={() => setShowQT((v) => !v)}><Languages size={14} /> {showQT ? "Ocultar tradução" : "Traduzir pergunta"}</button>}
+              {showQT && q.q_pt && <p className="f-muted" style={{ fontSize: 13.5, marginTop: -4, marginBottom: 14, fontStyle: "italic" }}>{q.q_pt}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {(q.options || []).map((o, idx) => {
                   const isPick = picked === idx, isAns = idx === q.answer;
