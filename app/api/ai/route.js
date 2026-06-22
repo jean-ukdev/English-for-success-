@@ -159,6 +159,32 @@ export async function POST(req) {
     }
   }
 
+  // ---- 4b) Tradução sob demanda (qualquer texto EN -> PT) ----
+  if (body.mode === "translate") {
+    const text = (body.text || "").slice(0, 1200);
+    if (!text) return Response.json({ translation: "" });
+    try {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "Translate the user's English text into natural Brazilian Portuguese. Reply with ONLY the translation — no quotes, no notes, no extra text." },
+            { role: "user", content: text },
+          ],
+          temperature: 0.3,
+          max_tokens: 400,
+        }),
+      });
+      if (!r.ok) return Response.json({ translation: "" }, { status: 502 });
+      const data = await r.json();
+      return Response.json({ translation: (data?.choices?.[0]?.message?.content || "").trim() });
+    } catch (e) {
+      return Response.json({ translation: "" }, { status: 502 });
+    }
+  }
+
   // ---- 5) Padrão: chat (tutor) ou role-play (simulações) ----
   const { mode = "tutor", chatMode = "free", messages = [], level = "B1", goal = "Conversação", scenarioRole = "", opener = "" } = body;
 
