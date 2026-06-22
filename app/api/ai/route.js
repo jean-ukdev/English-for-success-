@@ -134,7 +134,7 @@ export async function POST(req) {
       `Create a short interactive mini-lesson about: ${focus}. ` +
       `Reply with ONLY a JSON object: {"title":"<short English title>",` +
       `"intro":"<2 to 3 sentence explanation in Brazilian Portuguese that teaches the key English for this topic>",` +
-      `"questions":[{"q":"<a clear multiple-choice question testing this English>","options":["A","B","C","D"],` +
+      `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],` +
       `"answer":0,"explain":"<one short sentence in Brazilian Portuguese explaining the correct answer>"}]}. ` +
       `Give exactly 4 questions, each with exactly 4 options and one correct answer ("answer" is the 0-based index). ` +
       `Make the questions practical and matched to level ${lvl}, and vary them each time.`;
