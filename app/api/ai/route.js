@@ -135,8 +135,8 @@ export async function POST(req) {
       `Reply with ONLY a JSON object: {"title":"<short English title>",` +
       `"intro":"<2 to 3 sentence explanation in Brazilian Portuguese that teaches the key English for this topic>",` +
       `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],` +
-      `"answer":0,"explain":"<one short sentence in Brazilian Portuguese explaining the correct answer>"}]}. ` +
-      `Give exactly 4 questions, each with exactly 4 options and one correct answer ("answer" is the 0-based index). ` +
+      `"answer":0,"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>","explain":"<one short sentence in Brazilian Portuguese explaining why answer_text is the correct answer>"}]}. ` +
+      `Give exactly 4 questions, each with exactly 4 options and ONE correct answer. "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text. Verify all three point to the same option before answering. ` +
       `Make the questions practical and matched to level ${lvl}, and vary them each time.`;
     try {
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
