@@ -1080,53 +1080,53 @@ const UK_MODULES = [
 // Trilha principal: 5 módulos em ordem. Cada lição tem "title" (PT) e "focus" (tema em inglês pra IA gerar a aula + quiz).
 const MODULES = [
   {
-    key: "iniciante", title: "Iniciante", subtitle: "Primeiros passos · A1–A2", color: "#1F9D55", icon: Star,
+    key: "everyday", title: "Everyday English", subtitle: "O inglês do dia a dia", color: "#1F9D55", icon: MessageCircle,
     lessons: [
-      { title: "Cumprimentos e apresentações", focus: "basic greetings and introducing yourself in English (hello, hi, my name is, nice to meet you, where are you from, I'm from)" },
-      { title: "Verbo to be e presente simples", focus: "the verb to be (am/is/are) and the present simple for daily routines and basic facts" },
-      { title: "Números, horas e datas", focus: "numbers, telling the time, days of the week, months and dates in English" },
-      { title: "Perguntas do dia a dia", focus: "common everyday questions in English (what, where, when, how much, can I, do you have)" },
-      { title: "Comida e pedir num café", focus: "food vocabulary and ordering at a café or restaurant in English (I'd like, can I have, the bill please)" },
+      { title: "Família e relacionamentos", focus: "everyday English for talking about your family and relationships (family members, marital status, describing people you know)" },
+      { title: "Compras e dinheiro", focus: "everyday English for shopping and money (prices, paying by card or cash, sizes, asking for help in a shop)" },
+      { title: "Transporte e direções", focus: "everyday English for getting around (bus, train, taxi, asking for and understanding directions)" },
+      { title: "Restaurantes e pedidos", focus: "everyday English for restaurants and cafés (ordering food and drinks, asking for the bill, dietary requests)" },
+      { title: "Tempo livre e hobbies", focus: "everyday English for free time and hobbies (weekend plans, sports, films, making and accepting invitations)" },
     ],
   },
   {
-    key: "intermediario", title: "Intermediário", subtitle: "Comunicação real · B1–B2", color: "#2F80ED", icon: Zap,
+    key: "uklife", title: "UK Life English", subtitle: "Viver no Reino Unido", color: "#E0245E", icon: Flag,
     lessons: [
-      { title: "Past Simple", focus: "the Past Simple tense with regular and irregular verbs, to talk about finished past actions" },
-      { title: "Futuro: will e going to", focus: "talking about the future in English with will and going to (plans, predictions, decisions)" },
-      { title: "No trabalho", focus: "everyday workplace English (talking to colleagues and your manager, shifts, asking for help, taking a day off)" },
-      { title: "Dar opiniões e concordar", focus: "giving opinions and agreeing or disagreeing in English (I think, in my opinion, I agree, I'm not sure about that)" },
-      { title: "Telefone e email", focus: "English for phone calls and emails (polite requests, making appointments, leaving a message, greetings and sign-offs)" },
+      { title: "NHS e saúde", focus: "UK English for health and the NHS (booking a GP appointment, prescriptions, pharmacy/chemist, describing symptoms)" },
+      { title: "Banco e contas", focus: "UK English for banking and bills (opening a current account, direct debit, standing order, paying bills)" },
+      { title: "Moradia e Council Tax", focus: "UK English for housing (renting, deposit, landlord, tenant, council tax, utilities and bills)" },
+      { title: "Empregos e benefícios", focus: "UK English for work and benefits (National Insurance number, payslip, Universal Credit, applying for jobs)" },
+      { title: "Escola e burocracia", focus: "UK English for schools and official paperwork (enrolling a child in school, parents' evening, filling in forms)" },
     ],
   },
   {
-    key: "avancado", title: "Avançado", subtitle: "Fluência e nuances · C1–C2", color: "#7C5CFA", icon: Crown,
+    key: "career", title: "Career English", subtitle: "Crescimento profissional", color: "#2F80ED", icon: Briefcase,
     lessons: [
-      { title: "Condicionais", focus: "English conditionals (zero, first, second and third conditional) for real and hypothetical situations" },
-      { title: "Phrasal verbs essenciais", focus: "common and useful English phrasal verbs with examples (get up, look for, give up, find out, take off)" },
-      { title: "Expressões e idioms", focus: "natural English idioms and expressions used by native speakers, with meaning and examples" },
-      { title: "Present Perfect vs Past Simple", focus: "the difference between Present Perfect and Past Simple and when to use each one" },
-      { title: "Discussão e argumentação", focus: "debating and arguing in English: expressing nuance, formal vs informal register, linking words" },
+      { title: "Currículo (CV)", focus: "English for writing a strong CV/resume (action verbs, describing experience and achievements with measurable impact)" },
+      { title: "LinkedIn e marca pessoal", focus: "English for LinkedIn and personal branding (headline, summary, describing what you do, professional tone)" },
+      { title: "Entrevista de emprego", focus: "English for job interviews (tell me about yourself, strengths and weaknesses, answering common interview questions)" },
+      { title: "Apresentações", focus: "English for giving presentations at work (opening, structuring points, signposting, handling questions)" },
+      { title: "Reuniões e networking", focus: "English for meetings and professional networking (giving opinions, agreeing, introducing yourself, small talk)" },
     ],
   },
   {
-    key: "uk", title: "Reino Unido", subtitle: "Viver no UK · cultura e dia a dia", color: "#E0245E", icon: Flag,
+    key: "business", title: "Business English", subtitle: "Comunicação empresarial", color: "#7C5CFA", icon: BarChart3,
     lessons: [
-      { title: "Saúde e NHS", focus: "UK health and NHS basics (book a GP appointment, prescription, pharmacy/chemist, describing symptoms)" },
-      { title: "Alugar e morar", focus: "renting a home in the UK (rent, deposit, landlord, tenant, council tax, bills, viewing a flat)" },
-      { title: "Banco e contas", focus: "UK banking and bills (current account, direct debit, standing order, debit card, paying bills)" },
-      { title: "Transporte e direções", focus: "UK transport and directions (bus, tube, Oyster/contactless, train ticket, asking for and giving directions)" },
-      { title: "Gírias e cultura britânica", focus: "British slang, politeness and small talk (cheers, mate, lovely, you alright?, queuing, the weather)" },
+      { title: "Marketing e vendas", focus: "business English for marketing and sales (describing products, benefits, persuading customers, closing a sale)" },
+      { title: "Negociação", focus: "business English for negotiating (making and responding to offers, polite pushback, reaching an agreement)" },
+      { title: "Finanças e números", focus: "business English for finance and numbers (talking about revenue, costs, profit, reading charts and reports)" },
+      { title: "Gestão de equipe", focus: "business English for managing a team (delegating, giving feedback, setting goals, one-to-one meetings)" },
+      { title: "Liderança e comunicação", focus: "business English for leadership communication (motivating people, clear messaging, formal vs informal register)" },
     ],
   },
   {
-    key: "empreendedor", title: "Empreendedor", subtitle: "Inglês de negócios · trabalhar por conta", color: "#F2994A", icon: Briefcase,
+    key: "entrepreneur", title: "Entrepreneur English", subtitle: "Empreender no mundo", color: "#FF7A18", icon: Crown,
     lessons: [
-      { title: "Abrir negócio no UK", focus: "starting a business in the UK in English (sole trader, register with HMRC, self-employed, National Insurance, VAT)" },
-      { title: "Faturas e finanças", focus: "business English for invoices and finances (invoice, expenses, getting paid, quote, deposit, due date)" },
-      { title: "Reuniões e apresentações", focus: "English for meetings and presentations (agenda, action points, pitching an idea, agreeing next steps)" },
-      { title: "Networking e vendas", focus: "English for networking and selling (introducing your business, describing what you do, persuading a client)" },
-      { title: "Emails e negociação", focus: "professional business emails and negotiating in English (proposals, polite pushback, reaching an agreement)" },
+      { title: "Pitch e startups", focus: "startup English for pitching (explaining your idea, the problem and the solution, your value proposition clearly)" },
+      { title: "Investimento e valuation", focus: "startup English for fundraising (investment, valuation, equity, talking to investors about your business)" },
+      { title: "Aquisição de clientes", focus: "startup English for growth and customer acquisition (marketing channels, conversion, retention, key metrics)" },
+      { title: "Escalar o negócio", focus: "startup English for scaling a business (hiring, operations, processes, growing into new markets)" },
+      { title: "Negociar com investidores", focus: "startup English for negotiating with investors (term sheets, valuation, equity, persuading and holding your ground)" },
     ],
   },
 ];
@@ -1406,7 +1406,7 @@ function ModuleView({ mod, moduleIndex, onBack }) {
   const [openIdx, setOpenIdx] = useState(null);
   const total = mod.lessons.length;
   const done = mod.lessons.filter((_, i) => doneLessons.has(mod.key + "-" + i)).length;
-  const isUnlocked = (i) => i === 0 || doneLessons.has(mod.key + "-" + (i - 1));
+  const isUnlocked = (i) => true; // todas as lições liberadas
 
   if (openIdx !== null) {
     const i = openIdx;
@@ -1479,7 +1479,7 @@ function TrilhaScreen() {
 
   const lessonsDoneIn = (m) => MODULES[m].lessons.filter((_, i) => doneLessons.has(MODULES[m].key + "-" + i)).length;
   const moduleComplete = (m) => lessonsDoneIn(m) === MODULES[m].lessons.length;
-  const moduleUnlocked = (m) => m === 0 || moduleComplete(m - 1);
+  const moduleUnlocked = (m) => true; // tudo desbloqueado (até a Fase 3 com progresso salvo)
   const totalDone = MODULES.reduce((n, _, m) => n + lessonsDoneIn(m), 0);
   const totalLessons = MODULES.reduce((n, mod) => n + mod.lessons.length, 0);
 
@@ -1491,8 +1491,8 @@ function TrilhaScreen() {
       <div className="f-scroll">
       <div className="f-pad">
         <div className="f-eyebrow">Sua jornada</div>
-        <h2 className="f-h1" style={{ marginTop: 4, marginBottom: 6 }}>Trilha de inglês</h2>
-        <p className="f-muted" style={{ fontSize: 14, marginBottom: 14 }}>Do básico à fluência. Conclua um módulo para desbloquear o próximo.</p>
+        <h2 className="f-h1" style={{ marginTop: 4, marginBottom: 6 }}>Suas trilhas</h2>
+        <p className="f-muted" style={{ fontSize: 14, marginBottom: 14 }}>Do dia a dia ao mundo dos negócios. Conclua uma trilha para desbloquear a próxima.</p>
 
         <div className="f-card f-pad" style={{ padding: 15, marginBottom: 18, background: "linear-gradient(135deg,#2A1E45,#3a2a5e)", border: "none", color: "#fff" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11 }}>
