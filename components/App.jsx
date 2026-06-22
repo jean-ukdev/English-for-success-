@@ -1290,12 +1290,22 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
 
   const qs = data?.questions || [];
   const q = qs[qi];
+  // Índice correto robusto: cruza o texto da resposta (confiável) com as opções; cai pro índice se não bater.
+  const correctIdx = (() => {
+    if (!q) return -1;
+    const norm = (s) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (q.answer_text != null && Array.isArray(q.options)) {
+      const i = q.options.findIndex((o) => norm(o) === norm(q.answer_text));
+      if (i >= 0) return i;
+    }
+    return typeof q.answer === "number" ? q.answer : 0;
+  })();
   const pass = qs.length > 0 && correct >= Math.ceil(qs.length / 2);
 
   const pick = (idx) => {
     if (picked !== null) return;
     setPicked(idx);
-    if (q && idx === q.answer) setCorrect((c) => c + 1);
+    if (q && idx === correctIdx) setCorrect((c) => c + 1);
   };
   const next = () => {
     if (qi + 1 < qs.length) { setQi(qi + 1); setPicked(null); setShowQT(false); }
@@ -1349,7 +1359,7 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
               {showQT && q.q_pt && <p className="f-muted" style={{ fontSize: 13.5, marginTop: -4, marginBottom: 14, fontStyle: "italic" }}>{q.q_pt}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {(q.options || []).map((o, idx) => {
-                  const isPick = picked === idx, isAns = idx === q.answer;
+                  const isPick = picked === idx, isAns = idx === correctIdx;
                   let st = {};
                   if (picked !== null) {
                     if (isAns) st = { borderColor: "var(--ok)", background: "#EFFBF1" };
@@ -1367,8 +1377,8 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
               {picked !== null && (
                 <>
                   {q.explain && (
-                    <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: picked === q.answer ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
-                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}><b>{picked === q.answer ? "Certo! " : "Resposta correta: "}</b>{q.explain}</p>
+                    <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: picked === correctIdx ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
+                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}><b>{picked === correctIdx ? "Certo! " : "Resposta correta: "}</b>{q.explain}</p>
                     </div>
                   )}
                   <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={next}>{qi + 1 < qs.length ? "Próxima" : "Ver resultado"} <ArrowRight size={18} /></button>
