@@ -185,6 +185,36 @@ export async function POST(req) {
     }
   }
 
+  // ---- 4c) Escrita profissional (gerar ou corrigir) ----
+  if (body.mode === "writing") {
+    const { action = "generate", docType = "email", text = "" } = body;
+    if (!text.trim()) return Response.json({ error: "empty" }, { status: 400 });
+    const LABELS = { email: "email", message: "short message", cv: "CV / resume bullet points", linkedin: "LinkedIn summary", proposal: "business proposal" };
+    const label = LABELS[docType] || "text";
+    const system = action === "improve"
+      ? `You are an expert English writing coach for a Brazilian professional. The user will paste a ${label} written in English. Rewrite it so it is professional, natural and grammatically correct, keeping their intent. Return ONLY a JSON object: {"corrected":"the improved English version","explanation":"a short explanation in Brazilian Portuguese (2-4 sentences) of the main improvements and why they matter"}.`
+      : `You are an expert English writing assistant for a Brazilian professional. Based on the user's request (which may be written in Portuguese), write a professional, natural ${label} in English. Use an appropriate length, tone and structure. Return ONLY a JSON object: {"text":"the English ${label}","translation":"a faithful Brazilian Portuguese translation of text"}.`;
+    try {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "system", content: system }, { role: "user", content: text.slice(0, 2500) }],
+          temperature: 0.7,
+          max_tokens: 900,
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (!r.ok) return Response.json({ error: "ai_error" }, { status: 502 });
+      const data = await r.json();
+      try { return Response.json(JSON.parse(data?.choices?.[0]?.message?.content || "{}")); }
+      catch (e) { return Response.json({ error: "parse_error" }, { status: 502 }); }
+    } catch (e) {
+      return Response.json({ error: "network_error" }, { status: 502 });
+    }
+  }
+
   // ---- 5) Padrão: chat (tutor) ou role-play (simulações) ----
   const { mode = "tutor", chatMode = "free", messages = [], level = "B1", goal = "Conversação", scenarioRole = "", opener = "" } = body;
 
