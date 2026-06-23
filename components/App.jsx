@@ -1355,7 +1355,7 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
               <div className="f-xpbar" style={{ marginBottom: 16 }}><div className="f-xpfill" style={{ width: `${(qi / qs.length) * 100}%`, background: "linear-gradient(90deg,#FFA040,var(--coral))" }} /></div>
               <p className="f-faint" style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 8 }}>Pergunta {qi + 1} de {qs.length}</p>
               <div className="f-card f-pad" style={{ padding: 16, marginBottom: 10, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", lineHeight: 1.4 }}>{q.q}</div>
-              {q.q_pt && <button className={"f-tiny" + (showQT ? " on" : "")} style={{ marginBottom: 14 }} onClick={() => setShowQT((v) => !v)}><Languages size={14} /> {showQT ? "Ocultar tradução" : "Traduzir pergunta"}</button>}
+              {(q.q_pt || q.options_pt) && <button className={"f-tiny" + (showQT ? " on" : "")} style={{ marginBottom: 14 }} onClick={() => setShowQT((v) => !v)}><Languages size={14} /> {showQT ? "Ocultar tradução" : "Traduzir"}</button>}
               {showQT && q.q_pt && <p className="f-muted" style={{ fontSize: 13.5, marginTop: -4, marginBottom: 14, fontStyle: "italic" }}>{q.q_pt}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {(q.options || []).map((o, idx) => {
@@ -1367,7 +1367,10 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                   }
                   return (
                     <button key={idx} className="f-chip" style={{ ...st, justifyContent: "space-between", height: "auto", minHeight: 46, padding: "11px 14px", textAlign: "left", lineHeight: 1.35 }} onClick={() => pick(idx)} disabled={picked !== null}>
-                      <span>{o}</span>
+                      <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span>{o}</span>
+                        {showQT && q.options_pt && q.options_pt[idx] && <span style={{ fontSize: 12.5, color: "var(--ink3)", fontWeight: 500, fontStyle: "italic" }}>{q.options_pt[idx]}</span>}
+                      </span>
                       {picked !== null && isAns && <Check size={18} color="var(--ok)" style={{ flex: "none", marginLeft: 8 }} />}
                       {picked !== null && isPick && !isAns && <X size={18} color="var(--err)" style={{ flex: "none", marginLeft: 8 }} />}
                     </button>
