@@ -6,11 +6,11 @@ import {
   Volume2, Target, Zap, Plus, Heart, ChevronRight, ArrowRight, ArrowLeft, Plane,
   Briefcase, Utensils, BedDouble, ShoppingBag, Landmark, Building2, Loader2, RotateCcw,
   User, Globe, GraduationCap, Sparkles, Crown, Lock, PartyPopper, Wand2, Trophy, RefreshCw, Lightbulb,
-  Stethoscope, Home, Bus, Flag, Map, Dumbbell, FileText, Copy
+  Stethoscope, Home, Bus, Flag, Map, Dumbbell
 } from "lucide-react";
 // Backend integration: AI chat + correction (/api/chat), text-to-speech (/api/tts),
 // speech-to-text recording (/api/stt). useRecorder mirrors the old useSpeech API.
-import { tutorReply, roleReply, speak, useRecorder as useSpeech, grammarLesson, generateVocab, lessonContent, translateText, writingHelp } from "../lib/api";
+import { tutorReply, roleReply, speak, useRecorder as useSpeech, grammarLesson, generateVocab, lessonContent, translateText } from "../lib/api";
 
 /* ----------------------------------------------------------------------------
    English for Success — Aprenda inglês com IA
@@ -314,9 +314,8 @@ const SCENARIOS = [
 ];
 
 const PLANS = [
-  { id: "free", name: "Gratuito", price: "£0", per: "para sempre", feat: ["10 mensagens por dia", "1 teste por semana", "Vocabulário básico"], cta: "Plano atual" },
-  { id: "premium", name: "Premium", price: "£9,99", per: "/mês", feat: ["Mensagens ilimitadas", "Voz e pronúncia ilimitadas", "Todas as simulações", "Correção avançada"], cta: "Assinar Premium", feat_flag: true },
-  { id: "pro", name: "Pro", price: "£19,99", per: "/mês", feat: ["Tudo do Premium", "Coach de IA avançado", "Plano de estudos sob medida", "Relatórios completos"], cta: "Assinar Pro" },
+  { id: "free", name: "Gratuito", price: "£0", per: "para sempre", feat: ["20 mensagens por dia no chat", "Trilhas e lições com IA", "Vocabulário e pronúncia"], cta: "Plano atual" },
+  { id: "premium", name: "Premium", price: "£7", per: "/mês", note: "ou R$ 12/mês no Brasil 🇧🇷", feat: ["Conversas ilimitadas com o Delagassa", "Todas as trilhas e simulações", "Voz e pronúncia sem limite", "Tudo desbloqueado"], cta: "Assinar Premium", feat_flag: true },
 ];
 
 const ACHIEVEMENTS = [
@@ -1138,7 +1137,6 @@ const PRACTICE_TOOLS = [
   { id: "vocab", label: "Vocabulário", desc: "Aprenda palavras novas por tema", icon: BookOpen, color: "#7C5CFA" },
   { id: "grammar", label: "Gramática", desc: "Aulas de gramática geradas pela IA", icon: GraduationCap, color: "#1F9D55" },
   { id: "sim", label: "Simulações", desc: "Pratique situações reais por voz", icon: Wand2, color: "#F2994A" },
-  { id: "writing", label: "Escrita Profissional", desc: "Gere e corrija CV, LinkedIn, emails e propostas", icon: FileText, color: "#0EA5A5" },
   { id: "uk", label: "Inglês do Reino Unido", desc: "NHS, moradia, banco, transporte e gírias 🇬🇧", icon: Flag, color: "#E0245E" },
 ];
 
@@ -1561,99 +1559,6 @@ function TrilhaScreen() {
   );
 }
 
-const WRITE_TYPES = [
-  { id: "email", label: "Email" },
-  { id: "message", label: "Mensagem" },
-  { id: "cv", label: "CV" },
-  { id: "linkedin", label: "LinkedIn" },
-  { id: "proposal", label: "Proposta" },
-];
-
-function WritingScreen() {
-  const [action, setAction] = useState("generate"); // generate | improve
-  const [docType, setDocType] = useState("email");
-  const [input, setInput] = useState("");
-  const [res, setRes] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(false);
-  const [showT, setShowT] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const run = async () => {
-    if (!input.trim() || busy) return;
-    setBusy(true); setErr(false); setRes(null); setShowT(false); setCopied(false);
-    try { const r = await writingHelp({ action, docType, text: input }); if (r && !r.error) setRes(r); else setErr(true); }
-    catch (e) { setErr(true); }
-    setBusy(false);
-  };
-
-  const outText = res ? (action === "improve" ? res.corrected : res.text) || "" : "";
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(outText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch (e) {}
-  };
-  const segStyle = (on) => on ? { borderColor: "var(--coral)", background: "#FFF3EC", color: "var(--coral-d)", fontWeight: 700 } : {};
-
-  return (
-    <div className="f-scroll">
-      <div className="f-pad">
-        <div className="f-eyebrow">Escrita Profissional</div>
-        <h2 className="f-h1" style={{ marginTop: 4, marginBottom: 6 }}>Escreva como um profissional</h2>
-        <p className="f-muted" style={{ fontSize: 14, marginBottom: 18 }}>Gere ou corrija emails, CV, LinkedIn e propostas em inglês.</p>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button className="f-chip" style={{ flex: 1, justifyContent: "center", ...segStyle(action === "generate") }} onClick={() => { setAction("generate"); setRes(null); setErr(false); }}>✍️ Escrever</button>
-          <button className="f-chip" style={{ flex: 1, justifyContent: "center", ...segStyle(action === "improve") }} onClick={() => { setAction("improve"); setRes(null); setErr(false); }}>🔧 Corrigir</button>
-        </div>
-
-        <p className="f-faint" style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 9 }}>Tipo</p>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 16 }}>
-          {WRITE_TYPES.map((t) => (
-            <button key={t.id} className="f-chip" style={{ flex: "none", ...segStyle(docType === t.id) }} onClick={() => setDocType(t.id)}>{t.label}</button>
-          ))}
-        </div>
-
-        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={5}
-          placeholder={action === "generate" ? "Descreva o que você quer escrever (pode ser em português). Ex: email pedindo aumento ao meu chefe." : "Cole seu texto em inglês para eu corrigir e deixar profissional..."}
-          style={{ width: "100%", border: "1px solid var(--line2)", borderRadius: 14, padding: 14, fontSize: 15, fontFamily: "inherit", resize: "vertical", background: "var(--card)", color: "var(--ink)", lineHeight: 1.5, outline: "none" }} />
-
-        <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={run} disabled={busy || !input.trim()}>
-          {busy ? <><Loader2 size={18} className="spin" /> {action === "generate" ? "Escrevendo…" : "Corrigindo…"}</> : <>{action === "generate" ? "Gerar texto" : "Corrigir texto"} <Sparkles size={18} /></>}
-        </button>
-
-        {err && <div className="f-card f-pad" style={{ padding: 14, marginTop: 16, textAlign: "center" }}><p className="f-muted" style={{ fontSize: 14 }}>Não consegui agora. <button className="f-link" onClick={run}>Tentar de novo</button></p></div>}
-
-        {res && !busy && (
-          <div style={{ marginTop: 22 }}>
-            {action === "improve" ? (
-              <>
-                <p className="f-faint" style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 9 }}>Versão corrigida</p>
-                <div className="f-card f-pad" style={{ padding: 15, marginBottom: 14, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{res.corrected}</div>
-                {res.explanation && (
-                  <div className="f-card f-pad" style={{ padding: 15, marginBottom: 14, background: "#FFF7ED", border: "none" }}>
-                    <p className="f-faint" style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 7, color: "var(--coral-d)" }}>O que mudou</p>
-                    <p style={{ fontSize: 14, lineHeight: 1.55, color: "var(--ink2)" }}>{res.explanation}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="f-faint" style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 9 }}>Seu texto em inglês</p>
-                <div className="f-card f-pad" style={{ padding: 15, marginBottom: 12, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{res.text}</div>
-                {showT && res.translation && <div className="f-card f-pad" style={{ padding: 15, marginBottom: 12, background: "#F3F0FA", border: "none", fontSize: 14, lineHeight: 1.55, color: "var(--ink2)", whiteSpace: "pre-wrap" }}>{res.translation}</div>}
-              </>
-            )}
-            <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 4 }}>
-              <button className="f-tiny" onClick={() => speak(outText)}><Volume2 size={14} /> Ouvir</button>
-              {action === "generate" && res.translation && <button className={"f-tiny" + (showT ? " on" : "")} onClick={() => setShowT((v) => !v)}><Languages size={14} /> {showT ? "Ocultar" : "Traduzir"}</button>}
-              <button className="f-tiny" onClick={copy}><Copy size={14} /> {copied ? "Copiado!" : "Copiar"}</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function PraticarScreen({ onOpen }) {
   return (
     <>
@@ -1802,8 +1707,9 @@ function PlansSheet({ onClose, plan, onChoose }) {
               {p.feat_flag && <div className="f-pill" style={{ background: "var(--coral)", color: "#fff", marginBottom: 8 }}><Star size={12} fill="#fff" /> Mais popular</div>}
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
                 <span className="f-h2">{p.name}</span>
-                <div><span className="f-price">{p.price}</span><span className="f-faint" style={{ fontSize: 13, fontWeight: 700 }}> {p.per}</span></div>
+                <div style={{ textAlign: "right" }}><span className="f-price">{p.price}</span><span className="f-faint" style={{ fontSize: 13, fontWeight: 700 }}> {p.per}</span></div>
               </div>
+              {p.note && <div className="f-faint" style={{ fontSize: 11.5, fontWeight: 600, textAlign: "right", marginTop: 3 }}>{p.note}</div>}
               <div style={{ margin: "6px 0 12px" }}>{p.feat.map((f, i) => <div className="f-feat" key={i}><span className="ck"><Check size={11} /></span>{f}</div>)}</div>
               <button className={"f-btn block " + (plan === p.id ? "ghost" : p.feat_flag ? "primary" : "dark")} disabled={plan === p.id}
                 onClick={() => onChoose(p.id)}>{plan === p.id ? "Plano atual" : p.cta}</button>
@@ -1853,7 +1759,7 @@ const TABS = [
 ];
 
 // Telas que vivem "dentro" da aba Praticar (mantêm a aba Praticar destacada).
-const PRACTICE_TABS = ["chat", "pron", "vocab", "grammar", "sim", "writing", "uk"];
+const PRACTICE_TABS = ["chat", "pron", "vocab", "grammar", "sim", "uk"];
 
 export default function App() {
   const [stage, setStage] = useState("welcome");
@@ -1950,7 +1856,6 @@ export default function App() {
               {tab === "pron" && <PronScreen />}
               {tab === "vocab" && <VocabScreen />}
               {tab === "grammar" && <GrammarScreen />}
-              {tab === "writing" && <WritingScreen />}
               {tab === "sim" && <SimScreen />}
               {tab === "uk" && <UKScreen />}
               {tab === "dash" && <DashScreen openPlans={() => setSheet("plans")} />}
