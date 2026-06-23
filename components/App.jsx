@@ -1355,7 +1355,10 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
               <div className="f-xpbar" style={{ marginBottom: 16 }}><div className="f-xpfill" style={{ width: `${(qi / qs.length) * 100}%`, background: "linear-gradient(90deg,#FFA040,var(--coral))" }} /></div>
               <p className="f-faint" style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 8 }}>Pergunta {qi + 1} de {qs.length}</p>
               <div className="f-card f-pad" style={{ padding: 16, marginBottom: 10, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", lineHeight: 1.4 }}>{q.q}</div>
-              {(q.q_pt || q.options_pt) && <button className={"f-tiny" + (showQT ? " on" : "")} style={{ marginBottom: 14 }} onClick={() => setShowQT((v) => !v)}><Languages size={14} /> {showQT ? "Ocultar tradução" : "Traduzir"}</button>}
+              <div style={{ display: "flex", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+                <button className="f-tiny" onClick={() => speak(q.q)}><Volume2 size={14} /> Ouvir</button>
+                {(q.q_pt || q.options_pt) && <button className={"f-tiny" + (showQT ? " on" : "")} onClick={() => setShowQT((v) => !v)}><Languages size={14} /> {showQT ? "Ocultar tradução" : "Traduzir"}</button>}
+              </div>
               {showQT && q.q_pt && <p className="f-muted" style={{ fontSize: 13.5, marginTop: -4, marginBottom: 14, fontStyle: "italic" }}>{q.q_pt}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {(q.options || []).map((o, idx) => {
@@ -1366,13 +1369,16 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                     else if (isPick) st = { borderColor: "var(--err)", background: "#FFF1F1" };
                   }
                   return (
-                    <button key={idx} className="f-chip" style={{ ...st, justifyContent: "space-between", height: "auto", minHeight: 46, padding: "11px 14px", textAlign: "left", lineHeight: 1.35 }} onClick={() => pick(idx)} disabled={picked !== null}>
+                    <button key={idx} className="f-chip" style={{ ...st, justifyContent: "space-between", height: "auto", minHeight: 46, padding: "11px 14px", textAlign: "left", lineHeight: 1.35 }} onClick={() => pick(idx)}>
                       <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         <span>{o}</span>
                         {showQT && q.options_pt && q.options_pt[idx] && <span style={{ fontSize: 12.5, color: "var(--ink3)", fontWeight: 500, fontStyle: "italic" }}>{q.options_pt[idx]}</span>}
                       </span>
-                      {picked !== null && isAns && <Check size={18} color="var(--ok)" style={{ flex: "none", marginLeft: 8 }} />}
-                      {picked !== null && isPick && !isAns && <X size={18} color="var(--err)" style={{ flex: "none", marginLeft: 8 }} />}
+                      <span style={{ display: "flex", alignItems: "center", gap: 10, flex: "none", marginLeft: 8 }}>
+                        {picked !== null && isAns && <Check size={18} color="var(--ok)" />}
+                        {picked !== null && isPick && !isAns && <X size={18} color="var(--err)" />}
+                        <span role="button" aria-label="Ouvir" onClick={(e) => { e.stopPropagation(); speak(o); }} style={{ display: "grid", placeItems: "center", padding: 3, cursor: "pointer", opacity: .65 }}><Volume2 size={16} /></span>
+                      </span>
                     </button>
                   );
                 })}
