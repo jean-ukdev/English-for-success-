@@ -135,8 +135,8 @@ export async function POST(req) {
       `Reply with ONLY a JSON object: {"title":"<short English title>",` +
       `"intro":"<2 to 3 sentence explanation in Brazilian Portuguese that teaches the key English for this topic>",` +
       `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],"options_pt":["<option A in Brazilian Portuguese>","<option B in Brazilian Portuguese>","<option C in Brazilian Portuguese>","<option D in Brazilian Portuguese>"],` +
-      `"answer":0,"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>","explain":"<one short sentence in Brazilian Portuguese explaining why answer_text is the correct answer>"}]}. ` +
-      `Give exactly 4 questions, each with exactly 4 options and ONE correct answer. "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text. Verify all three point to the same option before answering. ` +
+      `"answer":0,"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>","explain":"<one short sentence in Brazilian Portuguese explaining why answer_text is the correct answer>","option_explains":["<one short Brazilian Portuguese sentence explaining why option A is correct, or if it is wrong, exactly what makes it wrong>","<same for option B>","<same for option C>","<same for option D>"]}]}. ` +
+      `Give exactly 4 questions, each with exactly 4 options and ONE correct answer. "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text; and "option_explains" has exactly 4 entries in the SAME order as options, each saying why that specific option is right or wrong. Verify everything points to the same correct option before answering. ` +
       `Make the questions practical and matched to level ${lvl}, and vary them each time.`;
     try {
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -147,7 +147,7 @@ export async function POST(req) {
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: sys }, { role: "user", content: `Tema: ${focus}` }],
           temperature: 0.8,
-          max_tokens: 1000,
+          max_tokens: 1500,
         }),
       });
       if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
@@ -182,36 +182,6 @@ export async function POST(req) {
       return Response.json({ translation: (data?.choices?.[0]?.message?.content || "").trim() });
     } catch (e) {
       return Response.json({ translation: "" }, { status: 502 });
-    }
-  }
-
-  // ---- 4c) Escrita profissional (gerar ou corrigir) ----
-  if (body.mode === "writing") {
-    const { action = "generate", docType = "email", text = "" } = body;
-    if (!text.trim()) return Response.json({ error: "empty" }, { status: 400 });
-    const LABELS = { email: "email", message: "short message", cv: "CV / resume bullet points", linkedin: "LinkedIn summary", proposal: "business proposal" };
-    const label = LABELS[docType] || "text";
-    const system = action === "improve"
-      ? `You are an expert English writing coach for a Brazilian professional. The user will paste a ${label} written in English. Rewrite it so it is professional, natural and grammatically correct, keeping their intent. Return ONLY a JSON object: {"corrected":"the improved English version","explanation":"a short explanation in Brazilian Portuguese (2-4 sentences) of the main improvements and why they matter"}.`
-      : `You are an expert English writing assistant for a Brazilian professional. Based on the user's request (which may be written in Portuguese), write a professional, natural ${label} in English. Use an appropriate length, tone and structure. Return ONLY a JSON object: {"text":"the English ${label}","translation":"a faithful Brazilian Portuguese translation of text"}.`;
-    try {
-      const r = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "system", content: system }, { role: "user", content: text.slice(0, 2500) }],
-          temperature: 0.7,
-          max_tokens: 900,
-          response_format: { type: "json_object" },
-        }),
-      });
-      if (!r.ok) return Response.json({ error: "ai_error" }, { status: 502 });
-      const data = await r.json();
-      try { return Response.json(JSON.parse(data?.choices?.[0]?.message?.content || "{}")); }
-      catch (e) { return Response.json({ error: "parse_error" }, { status: 502 }); }
-    } catch (e) {
-      return Response.json({ error: "network_error" }, { status: 502 });
     }
   }
 
