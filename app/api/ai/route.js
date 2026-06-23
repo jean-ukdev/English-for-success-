@@ -134,7 +134,7 @@ export async function POST(req) {
       `Create a short interactive mini-lesson about: ${focus}. ` +
       `Reply with ONLY a JSON object: {"title":"<short English title>",` +
       `"intro":"<2 to 3 sentence explanation in Brazilian Portuguese that teaches the key English for this topic>",` +
-      `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],` +
+      `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],"options_pt":["<option A in Brazilian Portuguese>","<option B in Brazilian Portuguese>","<option C in Brazilian Portuguese>","<option D in Brazilian Portuguese>"],` +
       `"answer":0,"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>","explain":"<one short sentence in Brazilian Portuguese explaining why answer_text is the correct answer>"}]}. ` +
       `Give exactly 4 questions, each with exactly 4 options and ONE correct answer. "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text. Verify all three point to the same option before answering. ` +
       `Make the questions practical and matched to level ${lvl}, and vary them each time.`;
