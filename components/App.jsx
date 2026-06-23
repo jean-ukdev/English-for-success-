@@ -313,9 +313,17 @@ const SCENARIOS = [
     role: "a bank clerk helping the user open a bank account" },
 ];
 
+// Detecta se o usuário está no Brasil (pelo fuso horário) para mostrar o preço em R$.
+function isInBrazil() {
+  try {
+    const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
+    return /sao_paulo|bahia|fortaleza|recife|manaus|belem|campo_grande|cuiaba|boa_vista|porto_velho|rio_branco|maceio|araguaina|santarem|noronha/.test(tz);
+  } catch (e) { return false; }
+}
+
 const PLANS = [
-  { id: "free", name: "Gratuito", price: "£0", per: "para sempre", feat: ["20 mensagens por dia no chat", "Trilhas e lições com IA", "Vocabulário e pronúncia"], cta: "Plano atual" },
-  { id: "premium", name: "Premium", price: "£7", per: "/mês", note: "ou R$ 12/mês no Brasil 🇧🇷", feat: ["Conversas ilimitadas com o Delagassa", "Todas as trilhas e simulações", "Voz e pronúncia sem limite", "Tudo desbloqueado"], cta: "Assinar Premium", feat_flag: true },
+  { id: "free", name: "Gratuito", gbp: "£0", brl: "R$ 0", per: "para sempre", feat: ["20 mensagens por dia no chat", "Trilhas e lições com IA", "Vocabulário e pronúncia"], cta: "Plano atual" },
+  { id: "premium", name: "Premium", gbp: "£7", brl: "R$ 12", per: "/mês", feat: ["Conversas ilimitadas com o Delagassa", "Todas as trilhas e simulações", "Voz e pronúncia sem limite", "Tudo desbloqueado"], cta: "Assinar Premium", feat_flag: true },
 ];
 
 const ACHIEVEMENTS = [
@@ -1384,9 +1392,12 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
               </div>
               {picked !== null && (
                 <>
-                  {q.explain && (
+                  {((q.option_explains && (q.option_explains[picked] || q.option_explains[correctIdx])) || q.explain) && (
                     <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: picked === correctIdx ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
-                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}><b>{picked === correctIdx ? "Certo! " : "Resposta correta: "}</b>{q.explain}</p>
+                      {picked !== correctIdx && q.option_explains && q.option_explains[picked] && (
+                        <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)", marginBottom: 8 }}><b style={{ color: "var(--err)" }}>❌ Por que está errada: </b>{q.option_explains[picked]}</p>
+                      )}
+                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}><b style={{ color: "var(--ok)" }}>{picked === correctIdx ? "✅ Certo! " : "✅ Resposta certa: "}</b>{(q.option_explains && q.option_explains[correctIdx]) || q.explain}</p>
                     </div>
                   )}
                   <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={next}>{qi + 1 < qs.length ? "Próxima" : "Ver resultado"} <ArrowRight size={18} /></button>
@@ -1693,6 +1704,7 @@ function DashScreen({ openPlans }) {
 
 /* ============================ SHEETS ============================ */
 function PlansSheet({ onClose, plan, onChoose }) {
+  const brl = isInBrazil();
   return (
     <div className="f-overlay" onClick={onClose}>
       <div className="f-sheet" onClick={(e) => e.stopPropagation()}>
@@ -1707,9 +1719,8 @@ function PlansSheet({ onClose, plan, onChoose }) {
               {p.feat_flag && <div className="f-pill" style={{ background: "var(--coral)", color: "#fff", marginBottom: 8 }}><Star size={12} fill="#fff" /> Mais popular</div>}
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
                 <span className="f-h2">{p.name}</span>
-                <div style={{ textAlign: "right" }}><span className="f-price">{p.price}</span><span className="f-faint" style={{ fontSize: 13, fontWeight: 700 }}> {p.per}</span></div>
+                <div style={{ textAlign: "right" }}><span className="f-price">{brl ? p.brl : p.gbp}</span><span className="f-faint" style={{ fontSize: 13, fontWeight: 700 }}> {p.per}</span></div>
               </div>
-              {p.note && <div className="f-faint" style={{ fontSize: 11.5, fontWeight: 600, textAlign: "right", marginTop: 3 }}>{p.note}</div>}
               <div style={{ margin: "6px 0 12px" }}>{p.feat.map((f, i) => <div className="f-feat" key={i}><span className="ck"><Check size={11} /></span>{f}</div>)}</div>
               <button className={"f-btn block " + (plan === p.id ? "ghost" : p.feat_flag ? "primary" : "dark")} disabled={plan === p.id}
                 onClick={() => onChoose(p.id)}>{plan === p.id ? "Plano atual" : p.cta}</button>
