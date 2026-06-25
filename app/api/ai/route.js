@@ -125,19 +125,41 @@ export async function POST(req) {
     }
   }
 
-  // ---- 4b) Mini-lição interativa (explicação + perguntas de múltipla escolha) ----
+  // ---- 4b) Mini-lição interativa (explicação + 10 perguntas variadas de múltipla escolha) ----
   if (body.mode === "lesson") {
     const focus = body.topic || "everyday English";
     const lvl = body.level || "B1";
     const sys =
-      `You are an English teacher for Brazilian learners (CEFR ${lvl}). ` +
+      `You are an expert, encouraging English teacher for Brazilian learners (CEFR ${lvl}). ` +
       `Create a short interactive mini-lesson about: ${focus}. ` +
       `Reply with ONLY a JSON object: {"title":"<short English title>",` +
-      `"intro":"<2 to 3 sentence explanation in Brazilian Portuguese that teaches the key English for this topic>",` +
-      `"questions":[{"q":"<a clear multiple-choice question testing this English>","q_pt":"<the question above translated to natural Brazilian Portuguese>","options":["A","B","C","D"],"options_pt":["<option A in Brazilian Portuguese>","<option B in Brazilian Portuguese>","<option C in Brazilian Portuguese>","<option D in Brazilian Portuguese>"],` +
-      `"answer":0,"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>","explain":"<one short sentence in Brazilian Portuguese explaining why answer_text is the correct answer>","option_explains":["<one short Brazilian Portuguese sentence explaining why option A is correct, or if it is wrong, exactly what makes it wrong>","<same for option B>","<same for option C>","<same for option D>"]}]}. ` +
-      `Give exactly 4 questions, each with exactly 4 options and ONE correct answer. "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text; and "option_explains" has exactly 4 entries in the SAME order as options, each saying why that specific option is right or wrong. Verify everything points to the same correct option before answering. ` +
-      `Make the questions practical and matched to level ${lvl}, and vary them each time.`;
+      `"intro":"<2 to 4 sentence explanation in Brazilian Portuguese that teaches the key English for this topic, including 1 or 2 short example phrases in English>",` +
+      `"questions":[{` +
+      `"type":"<one of: fill_blank | translate_pt_en | best_reply | correct_sentence | find_error | vocab_meaning | word_choice>",` +
+      `"q":"<the question, written in English so it can be read aloud>",` +
+      `"q_pt":"<the question above translated to natural Brazilian Portuguese>",` +
+      `"options":["A","B","C","D"],` +
+      `"options_pt":["<A in Brazilian Portuguese>","<B in Brazilian Portuguese>","<C in Brazilian Portuguese>","<D in Brazilian Portuguese>"],` +
+      `"answer":0,` +
+      `"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>",` +
+      `"explain":"<one short Brazilian Portuguese sentence explaining why answer_text is the correct answer>",` +
+      `"option_explains":["<short PT sentence: why option A is correct if it is the answer, otherwise exactly what makes it wrong>","<same for option B>","<same for option C>","<same for option D>"]` +
+      `}]}. ` +
+      `RULES:\n` +
+      `- Give EXACTLY 10 questions. Each has EXACTLY 4 options and exactly ONE correct answer.\n` +
+      `- VARY the question types across the 10 questions — do NOT make them all the same. Use this mix: ` +
+      `2 "fill_blank" (complete the English sentence), ` +
+      `2 "translate_pt_en" (give a Brazilian Portuguese phrase and ask for its correct English — put the Portuguese phrase INSIDE "q", e.g. How do you say "<frase em português>" in English?), ` +
+      `2 "best_reply" (show a short real-life line someone says and ask for the best English response), ` +
+      `1 "correct_sentence" (pick the ONLY grammatically correct sentence), ` +
+      `1 "find_error" (pick the sentence that CONTAINS a mistake), ` +
+      `1 "vocab_meaning" (meaning or correct use of a key word from this topic), ` +
+      `1 "word_choice" (choose the correct word, preposition or collocation).\n` +
+      `- Keep "q" written in English so the audio button works (the only Portuguese inside "q" is the phrase to translate in translate_pt_en questions).\n` +
+      `- "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text.\n` +
+      `- "option_explains" has EXACTLY 4 entries, in the SAME order as "options". For the CORRECT option, say why it is right (do NOT start it with "Errado"). For each WRONG option, say specifically what makes it wrong.\n` +
+      `- Before answering, double-check that "answer", "answer_text" and "option_explains" all point to the SAME correct option.\n` +
+      `- Match difficulty to level ${lvl}, keep all options plausible (no obviously silly options), and vary the content each time.`;
     try {
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -147,7 +169,7 @@ export async function POST(req) {
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: sys }, { role: "user", content: `Tema: ${focus}` }],
           temperature: 0.8,
-          max_tokens: 1500,
+          max_tokens: 4000,
         }),
       });
       if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
@@ -159,7 +181,7 @@ export async function POST(req) {
     }
   }
 
-  // ---- 4b) Tradução sob demanda (qualquer texto EN -> PT) ----
+  // ---- 4c) Tradução sob demanda (qualquer texto EN -> PT) ----
   if (body.mode === "translate") {
     const text = (body.text || "").slice(0, 1200);
     if (!text) return Response.json({ translation: "" });
