@@ -11,6 +11,7 @@ import {
 // Backend integration: AI chat + correction (/api/chat), text-to-speech (/api/tts),
 // speech-to-text recording (/api/stt). useRecorder mirrors the old useSpeech API.
 import { tutorReply, roleReply, speak, useRecorder as useSpeech, grammarLesson, generateVocab, lessonContent, translateText } from "../lib/api";
+import { loadSnapshot, saveSnapshot, clearSnapshot } from "../lib/persist";
 
 /* ----------------------------------------------------------------------------
    English for Success — Aprenda inglês com IA
@@ -1789,6 +1790,43 @@ export default function App() {
   const [sheet, setSheet] = useState(null); // 'profile' | 'plans'
   const prevUnlocked = useRef(new Set());
 
+  const [hydrated, setHydrated] = useState(false);
+
+  // Carrega o progresso salvo uma vez, ao abrir o app.
+  useEffect(() => {
+    const s = loadSnapshot();
+    if (s) {
+      if (s.stage) setStage(s.stage);
+      if (s.tab) setTab(s.tab);
+      if (s.plan) setPlan(s.plan);
+      if (typeof s.xp === "number") setXp(s.xp);
+      if (s.profile) setProfile(s.profile);
+      if (s.testData) setTestData(s.testData);
+      if (s.stats) setStats(s.stats);
+      if (s.favorites) setFavorites(new Set(s.favorites));
+      if (s.learned) setLearnedSet(new Set(s.learned));
+      if (s.doneLessons) setDoneLessons(new Set(s.doneLessons));
+      if (s.unlocked) {
+        const u = new Set(s.unlocked);
+        setUnlocked(u);
+        prevUnlocked.current = u; // evita re-disparar conquistas ao recarregar
+      }
+    }
+    setHydrated(true);
+  }, []);
+
+  // Salva o snapshot sempre que algo relevante muda (só depois de hidratar).
+  useEffect(() => {
+    if (!hydrated) return;
+    saveSnapshot({
+      stage, tab, plan, xp, profile, testData, stats,
+      favorites: [...favorites],
+      learned: [...learned],
+      unlocked: [...unlocked],
+      doneLessons: [...doneLessons],
+    });
+  }, [hydrated, stage, tab, plan, xp, profile, testData, stats, favorites, learned, unlocked, doneLessons]);
+
   // session timer -> minutes studied
   useEffect(() => {
     if (stage !== "app") return;
@@ -1830,11 +1868,22 @@ export default function App() {
   const ctx = { profile, xp, addXp, stats, bump, favorites, toggleFav, learned, markLearned, unlocked, plan, doneLessons, completeLesson, openPlans: () => setSheet("plans"), openProfile: () => setSheet("profile") };
 
   const resetAll = () => {
+    clearSnapshot();
     setStage("welcome"); setProfile({ name: "", goal: null, goalLabel: "", level: "A1" });
     setXp(0); setStats({ messages: 0, wordsLearned: 0, pron: 0, sims: 0, lessons: 0, minutes: 0, streak: 1, days: 1 });
     setFavorites(new Set()); setLearnedSet(new Set()); setUnlocked(new Set()); setDoneLessons(new Set()); prevUnlocked.current = new Set();
     setPlan("free"); setTab("trilha"); setSheet(null);
   };
+
+  if (!hydrated) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0E16", display: "grid", placeItems: "center" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#FF7A18,#FFA040)", display: "grid", placeItems: "center", color: "#fff" }}>
+          <Sparkles size={22} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="falo">
