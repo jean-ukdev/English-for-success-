@@ -1502,7 +1502,7 @@ function ModuleView({ mod, moduleIndex, onBack }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 14.5 }}>{ls.title}</div>
-                <div className="f-faint" style={{ fontSize: 12, fontWeight: 600, marginTop: 1 }}>{ok ? "Concluída · toque para revisar" : open ? "4 perguntas · toque para começar" : "Conclua a anterior"}</div>
+                <div className="f-faint" style={{ fontSize: 12, fontWeight: 600, marginTop: 1 }}>{ok ? "Concluída · toque para revisar" : open ? "10 perguntas · toque para começar" : "Conclua a anterior"}</div>
               </div>
               {open && <ChevronRight size={18} color="var(--ink3)" style={{ flex: "none" }} />}
             </button>
