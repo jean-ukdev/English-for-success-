@@ -2,6 +2,7 @@
 // A chave da OpenAI fica só aqui no servidor — o navegador nunca a vê.
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // a lição gera mais conteúdo; dá tempo de terminar sem cortar na Vercel
 
 export async function POST(req) {
   const key = process.env.OPENAI_API_KEY;
@@ -125,7 +126,7 @@ export async function POST(req) {
     }
   }
 
-  // ---- 4b) Mini-lição interativa (explicação + 10 perguntas variadas de múltipla escolha) ----
+  // ---- 4b) Mini-lição interativa (explicação + 7 perguntas variadas, uma de cada tipo) ----
   if (body.mode === "lesson") {
     const focus = body.topic || "everyday English";
     const lvl = body.level || "B1";
@@ -146,18 +147,21 @@ export async function POST(req) {
       `"option_explains":["<short PT sentence: why option A is correct if it is the answer, otherwise exactly what makes it wrong>","<same for option B>","<same for option C>","<same for option D>"]` +
       `}]}. ` +
       `RULES:\n` +
-      `- Give EXACTLY 10 questions. Each has EXACTLY 4 options and exactly ONE correct answer.\n` +
-      `- VARY the question types across the 10 questions — do NOT make them all the same. Use this mix: ` +
-      `2 "fill_blank" (complete the English sentence), ` +
-      `2 "translate_pt_en" (give a Brazilian Portuguese phrase and ask for its correct English — put the Portuguese phrase INSIDE "q", e.g. How do you say "<frase em português>" in English?), ` +
-      `2 "best_reply" (show a short real-life line someone says and ask for the best English response), ` +
-      `1 "correct_sentence" (pick the ONLY grammatically correct sentence), ` +
-      `1 "find_error" (pick the sentence that CONTAINS a mistake), ` +
-      `1 "vocab_meaning" (meaning or correct use of a key word from this topic), ` +
-      `1 "word_choice" (choose the correct word, preposition or collocation).\n` +
-      `- Keep "q" written in English so the audio button works (the only Portuguese inside "q" is the phrase to translate in translate_pt_en questions).\n` +
+      `- Give EXACTLY 7 questions: ONE of each "type", in this exact order: fill_blank, translate_pt_en, best_reply, word_choice, correct_sentence, find_error, vocab_meaning.\n` +
+      `  fill_blank = complete the English sentence. ` +
+      `translate_pt_en = give a Brazilian Portuguese phrase and ask for its correct English (put the Portuguese phrase INSIDE "q", e.g. How do you say "<frase em português>" in English?). ` +
+      `best_reply = show a short real-life line someone says and ask for the best English response. ` +
+      `word_choice = choose the correct word, preposition or collocation. ` +
+      `correct_sentence = pick the ONLY grammatically correct sentence. ` +
+      `find_error = pick the sentence that CONTAINS a mistake. ` +
+      `vocab_meaning = meaning or correct use of a key word from this topic.\n` +
+      `- Each question has EXACTLY 4 options and exactly ONE correct answer.\n` +
+      `- Keep "q" written in English so the audio button works (the only Portuguese inside "q" is the phrase to translate in translate_pt_en).\n` +
       `- "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text.\n` +
-      `- "option_explains" has EXACTLY 4 entries, in the SAME order as "options". For the CORRECT option, say why it is right (do NOT start it with "Errado"). For each WRONG option, say specifically what makes it wrong.\n` +
+      `- TEACHING QUALITY IS THE MOST IMPORTANT THING. Explanations must genuinely TEACH — never just restate the answer.\n` +
+      `- "intro": 3 to 4 sentences in Brazilian Portuguese that clearly teach the key English of this topic, including 1 or 2 example phrases in English.\n` +
+      `- "explain": 1 to 2 sentences in Brazilian Portuguese explaining WHY answer_text is correct — name the grammar rule or the reason, and when useful contrast it with a wrong option. Make it clear and instructive, the kind of explanation that helps a learner actually understand.\n` +
+      `- "option_explains" has EXACTLY 4 entries, in the SAME order as "options". For the CORRECT option, explain why it is right and the rule behind it (do NOT start it with "Errado"). For each WRONG option, explain what is wrong AND briefly what that option would actually mean or when it WOULD be used — so the student also learns from the wrong choices. 1 to 2 sentences each, in Brazilian Portuguese.\n` +
       `- Before answering, double-check that "answer", "answer_text" and "option_explains" all point to the SAME correct option.\n` +
       `- Match difficulty to level ${lvl}, keep all options plausible (no obviously silly options), and vary the content each time.`;
     try {
@@ -169,7 +173,7 @@ export async function POST(req) {
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: sys }, { role: "user", content: `Tema: ${focus}` }],
           temperature: 0.8,
-          max_tokens: 4000,
+          max_tokens: 3500,
         }),
       });
       if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
