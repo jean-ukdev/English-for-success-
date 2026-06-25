@@ -1391,19 +1391,43 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                   );
                 })}
               </div>
-              {picked !== null && (
-                <>
-                  {((q.option_explains && (q.option_explains[picked] || q.option_explains[correctIdx])) || q.explain) && (
-                    <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: picked === correctIdx ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
-                      {picked !== correctIdx && q.option_explains && q.option_explains[picked] && (
-                        <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)", marginBottom: 8 }}><b style={{ color: "var(--err)" }}>❌ Por que está errada: </b>{q.option_explains[picked]}</p>
+              {picked !== null && (() => {
+                // A IA costuma mandar explicações APENAS das opções ERRADAS (distratores),
+                // na ordem das opções, sem uma entrada para a resposta certa. Antes o app
+                // lia essa lista como se houvesse 1 explicação por opção, o que deslocava
+                // tudo em uma posição. Aqui mapeamos cada explicação à opção correta.
+                const explains = Array.isArray(q.option_explains) ? q.option_explains : [];
+                const opts = q.options || [];
+                const alignedToAll = explains.length === opts.length;        // 1 explicação por opção
+                const distractorsOnly = explains.length === opts.length - 1;  // só as erradas
+                const explainFor = (i) => {
+                  if (alignedToAll) return explains[i] || null;
+                  if (distractorsOnly) {
+                    if (i === correctIdx) return null;
+                    const d = i < correctIdx ? i : i - 1; // posição entre os distratores
+                    return explains[d] || null;
+                  }
+                  return null;
+                };
+                const isRight = picked === correctIdx;
+                const whyWrong = isRight ? null : explainFor(picked);
+                const whyRight = isRight ? explainFor(correctIdx) : null; // só existe se vier 1 por opção
+                const correctText = opts[correctIdx] || "";
+                return (
+                  <>
+                    <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: isRight ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
+                      {whyWrong && (
+                        <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)", marginBottom: 8 }}><b style={{ color: "var(--err)" }}>❌ Por que está errada: </b>{whyWrong}</p>
                       )}
-                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}><b style={{ color: "var(--ok)" }}>{picked === correctIdx ? "✅ Certo! " : "✅ Resposta certa: "}</b>{(q.option_explains && q.option_explains[correctIdx]) || q.explain}</p>
+                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}>
+                        <b style={{ color: "var(--ok)" }}>{isRight ? "✅ Certo!" : "✅ Resposta certa: "}</b>
+                        {isRight ? (whyRight ? " " + whyRight : "") : ("“" + correctText + "”")}
+                      </p>
                     </div>
-                  )}
-                  <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={next}>{qi + 1 < qs.length ? "Próxima" : "Ver resultado"} <ArrowRight size={18} /></button>
-                </>
-              )}
+                    <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={next}>{qi + 1 < qs.length ? "Próxima" : "Ver resultado"} <ArrowRight size={18} /></button>
+                  </>
+                );
+              })()}
             </>
           )}
 
