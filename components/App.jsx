@@ -1274,19 +1274,48 @@ function UKModule({ mod, onBack, onPlay }) {
   );
 }
 
+// Monta até 3 frases faláveis a partir das RESPOSTAS CERTAS da lição (etapa de fala).
+// Pulamos tipos cuja resposta certa não é uma frase pra repetir (achar o erro, sentido de palavra).
+const GOOD_SPEAK_TYPES = new Set(["translate_pt_en", "best_reply", "correct_sentence", "fill_blank", "word_choice"]);
+function buildSpeakPhrases(qs) {
+  const out = [];
+  (qs || []).forEach((q) => {
+    if (!q) return;
+    const type = (q.type || "").trim();
+    if (type === "find_error" || type === "vocab_meaning") return; // resposta não serve pra repetir
+    const ans = (q.answer_text || "").trim();
+    const qtext = (q.q || "").trim();
+    let phrase = "";
+    if (/_{2,}/.test(qtext) && ans) {
+      phrase = qtext.replace(/_{2,}/, ans);               // completa a lacuna (sempre a frase correta)
+    } else if (type && GOOD_SPEAK_TYPES.has(type) && ans.split(/\s+/).filter(Boolean).length >= 3) {
+      phrase = ans;                                        // resposta já é uma frase completa
+    }
+    phrase = phrase.replace(/\s+/g, " ").trim();
+    const words = phrase.split(" ").filter(Boolean);
+    if (words.length >= 3 && /[a-zA-Z]/.test(phrase)) out.push(phrase);
+  });
+  const seen = new Set(), uniq = [];
+  for (const p of out) { const k = p.toLowerCase(); if (!seen.has(k)) { seen.add(k); uniq.push(p); } if (uniq.length >= 3) break; }
+  return uniq;
+}
+
 function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
-  const { profile, completeLesson } = useApp();
+  const { profile, completeLesson, bump, addXp } = useApp();
+  const speech = useSpeech();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
   const [err, setErr] = useState(false);
-  const [phase, setPhase] = useState("intro"); // intro | quiz | result
+  const [phase, setPhase] = useState("intro"); // intro | quiz | speak | result
   const [qi, setQi] = useState(0);
   const [picked, setPicked] = useState(null);
   const [correct, setCorrect] = useState(0);
   const [showQT, setShowQT] = useState(false);
+  const [speakIdx, setSpeakIdx] = useState(0);
+  const [speakResult, setSpeakResult] = useState(null);
 
   const load = async () => {
-    setBusy(true); setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setData(null); setShowQT(false);
+    setBusy(true); setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setData(null); setShowQT(false); setSpeakIdx(0); setSpeakResult(null);
     try {
       const d = await lessonContent(lesson.focus, profile);
       if (!d || !Array.isArray(d.questions) || d.questions.length === 0) setErr(true);
@@ -1309,6 +1338,9 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
     return typeof q.answer === "number" ? q.answer : 0;
   })();
   const pass = qs.length > 0 && correct >= Math.ceil(qs.length / 2);
+  const speakPhrases = buildSpeakPhrases(qs);
+  const hasSpeak = speakPhrases.length > 0 && speech.supported;
+  const speakPhrase = speakPhrases[speakIdx] || "";
 
   const pick = (idx) => {
     if (picked !== null) return;
@@ -1317,8 +1349,23 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
   };
   const next = () => {
     if (qi + 1 < qs.length) { setQi(qi + 1); setPicked(null); setShowQT(false); }
+    else setPhase(hasSpeak ? "speak" : "result");
+  };
+  const listenSpeak = () => {
+    if (speech.listening) { speech.stop(); return; }
+    setSpeakResult(null);
+    speech.start((said) => {
+      const r = scorePron(speakPhrase, said);
+      setSpeakResult({ ...r, said });
+      if (r.overall >= 50) { bump("pron", 1); addXp(10); }
+    });
+  };
+  const nextSpeak = () => {
+    if (speech.listening) speech.stop();
+    if (speakIdx + 1 < speakPhrases.length) { setSpeakIdx(speakIdx + 1); setSpeakResult(null); }
     else setPhase("result");
   };
+  const skipSpeak = () => { if (speech.listening) speech.stop(); setPhase("result"); };
   useEffect(() => { if (phase === "result" && pass) completeLesson(lessonId); /* eslint-disable-next-line */ }, [phase]);
 
   return (
@@ -1429,6 +1476,56 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                 );
               })()}
             </>
+          )}
+
+          {!busy && !err && phase === "speak" && (
+            <div>
+              <div className="f-eyebrow">Agora é com você</div>
+              <h2 className="f-h1" style={{ marginTop: 4, marginBottom: 6 }}>Fale em voz alta</h2>
+              <p className="f-muted" style={{ fontSize: 14, marginBottom: 14 }}>Repita a frase e ganhe nota de pronúncia. Frase {speakIdx + 1} de {speakPhrases.length}.</p>
+
+              <div className="f-card f-pad" style={{ padding: 18, textAlign: "center" }}>
+                <p className="f-faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase" }}>Diga esta frase</p>
+                <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 20, margin: "10px 0 14px", lineHeight: 1.3 }}>
+                  {speakResult ? speakPhrase.split(/\s+/).map((w, i) => (
+                    <span key={i} style={{ color: speakResult.matched[i] ? "var(--ok)" : "var(--ink3)" }}>{w} </span>
+                  )) : speakPhrase}
+                </p>
+                <button className="f-tiny" onClick={() => speak(speakPhrase)}><Volume2 size={14} /> Ouvir a frase</button>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 6px" }}>
+                <div className={"f-orb" + (speech.listening ? " live" : "")}>
+                  <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
+                  <button className="core" onClick={listenSpeak}><Mic size={38} /></button>
+                </div>
+              </div>
+              <p className="f-faint" style={{ textAlign: "center", fontSize: 13, fontWeight: 700, minHeight: 18 }}>
+                {speech.listening ? `Ouvindo… ${speech.transcript}` : speakResult ? "Toque para tentar de novo" : "Toque para gravar"}
+              </p>
+
+              {speakResult && (
+                <div className="f-card f-pad" style={{ padding: 16, marginTop: 12 }}>
+                  <div style={{ textAlign: "center", marginBottom: 12 }}>
+                    <span className="f-display" style={{ fontSize: 40, color: speakResult.overall >= 80 ? "var(--ok)" : speakResult.overall >= 55 ? "var(--gold)" : "var(--err)" }}>{speakResult.overall}</span>
+                    <span className="f-faint" style={{ fontSize: 15, fontWeight: 800 }}>/100</span>
+                    <p className="f-muted" style={{ fontSize: 13, marginTop: 2 }}>{speakResult.overall >= 80 ? "Excelente! 🎉" : speakResult.overall >= 55 ? "Bom, continue praticando!" : "Vamos tentar mais uma vez."}</p>
+                  </div>
+                  {[["Pronúncia", speakResult.pron], ["Fluência", speakResult.fluency], ["Clareza", speakResult.clarity]].map(([lab, v]) => (
+                    <div key={lab} style={{ marginBottom: 9 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, fontWeight: 800, marginBottom: 5 }}><span>{lab}</span><span style={{ color: v >= 80 ? "var(--ok)" : v >= 55 ? "var(--gold)" : "var(--err)" }}>{v}</span></div>
+                      <div className="f-xpbar"><div className="f-xpfill" style={{ width: `${v}%`, background: v >= 80 ? "var(--ok)" : v >= 55 ? "var(--gold)" : "var(--err)" }} /></div>
+                    </div>
+                  ))}
+                  <p className="f-faint" style={{ fontSize: 12.5, marginTop: 8 }}>Você disse: “{speakResult.said || "—"}”</p>
+                </div>
+              )}
+
+              <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={nextSpeak}>
+                {speakIdx + 1 < speakPhrases.length ? <>Próxima frase <ArrowRight size={18} /></> : <>Ver resultado <ArrowRight size={18} /></>}
+              </button>
+              <button className="f-btn ghost block" style={{ marginTop: 10 }} onClick={skipSpeak}>Pular esta etapa</button>
+            </div>
           )}
 
           {!busy && !err && phase === "result" && (
