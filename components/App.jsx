@@ -1274,6 +1274,36 @@ function UKModule({ mod, onBack, onPlay }) {
   );
 }
 
+// Cache de lições no localStorage: gera uma vez e reabre instantâneo nas próximas.
+const LESSON_CACHE_PREFIX = "efs:lesson:v1:";
+function loadLessonCache(id) {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(LESSON_CACHE_PREFIX + id);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return (obj && Array.isArray(obj.questions) && obj.questions.length > 0) ? obj : null;
+  } catch (e) { return null; }
+}
+function saveLessonCache(id, data) {
+  try {
+    if (typeof window === "undefined") return;
+    if (!data || !Array.isArray(data.questions) || data.questions.length === 0) return;
+    window.localStorage.setItem(LESSON_CACHE_PREFIX + id, JSON.stringify(data));
+  } catch (e) { /* armazenamento cheio/indisponível: ignora */ }
+}
+function clearAllLessonCache() {
+  try {
+    if (typeof window === "undefined") return;
+    const keys = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.indexOf(LESSON_CACHE_PREFIX) === 0) keys.push(k);
+    }
+    keys.forEach((k) => window.localStorage.removeItem(k));
+  } catch (e) { /* ignora */ }
+}
+
 // Monta até 3 frases faláveis a partir das RESPOSTAS CERTAS da lição (etapa de fala).
 // Pulamos tipos cuja resposta certa não é uma frase pra repetir (achar o erro, sentido de palavra).
 const GOOD_SPEAK_TYPES = new Set(["translate_pt_en", "best_reply", "correct_sentence", "fill_blank", "word_choice"]);
@@ -1313,13 +1343,23 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
   const [showQT, setShowQT] = useState(false);
   const [speakIdx, setSpeakIdx] = useState(0);
   const [speakResult, setSpeakResult] = useState(null);
+  const [spkTrans, setSpkTrans] = useState(null);       // tradução da frase da fala (buscada sob demanda)
+  const [spkTransOn, setSpkTransOn] = useState(false);
+  const [spkTransLoading, setSpkTransLoading] = useState(false);
 
-  const load = async () => {
-    setBusy(true); setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setData(null); setShowQT(false); setSpeakIdx(0); setSpeakResult(null);
+  const load = async (forceFresh = false) => {
+    setErr(false); setPhase("intro"); setQi(0); setPicked(null); setCorrect(0); setShowQT(false); setSpeakIdx(0); setSpeakResult(null); setSpkTrans(null); setSpkTransOn(false);
+    // 1. Cache: se esta lição já foi gerada antes, abre na hora (sem chamar a IA).
+    if (!forceFresh) {
+      const cached = loadLessonCache(lessonId);
+      if (cached) { setData(cached); setBusy(false); return; }
+    }
+    // 2. Sem cache (ou pedindo novas perguntas): gera pela IA e guarda pra próxima vez.
+    setData(null); setBusy(true);
     try {
       const d = await lessonContent(lesson.focus, profile);
       if (!d || !Array.isArray(d.questions) || d.questions.length === 0) setErr(true);
-      else setData(d);
+      else { setData(d); saveLessonCache(lessonId, d); }
     } catch (e) { setErr(true); }
     setBusy(false);
   };
@@ -1362,10 +1402,18 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
   };
   const nextSpeak = () => {
     if (speech.listening) speech.stop();
+    setSpkTrans(null); setSpkTransOn(false);
     if (speakIdx + 1 < speakPhrases.length) { setSpeakIdx(speakIdx + 1); setSpeakResult(null); }
     else setPhase("result");
   };
   const skipSpeak = () => { if (speech.listening) speech.stop(); setPhase("result"); };
+  const toggleSpeakTrans = async () => {
+    if (spkTrans) { setSpkTransOn((v) => !v); return; }
+    setSpkTransLoading(true);
+    try { const t = await translateText(speakPhrase); setSpkTrans(t); setSpkTransOn(true); }
+    catch (e) { /* silencioso: se falhar, só não mostra */ }
+    setSpkTransLoading(false);
+  };
   useEffect(() => { if (phase === "result" && pass) completeLesson(lessonId); /* eslint-disable-next-line */ }, [phase]);
 
   return (
@@ -1388,7 +1436,7 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
           )}
           {err && !busy && (
             <div className="f-card f-pad" style={{ padding: 16, textAlign: "center" }}>
-              <p className="f-muted" style={{ fontSize: 14 }}>Não consegui carregar a lição. <button className="f-link" onClick={load}>Tentar de novo</button></p>
+              <p className="f-muted" style={{ fontSize: 14 }}>Não consegui carregar a lição. <button className="f-link" onClick={() => load()}>Tentar de novo</button></p>
             </div>
           )}
 
@@ -1458,18 +1506,22 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                 };
                 const isRight = picked === correctIdx;
                 const whyWrong = isRight ? null : explainFor(picked);
-                const whyRight = isRight ? explainFor(correctIdx) : null; // só existe se vier 1 por opção
                 const correctText = opts[correctIdx] || "";
+                // Explicação que ENSINA por que a resposta certa está certa (sempre que houver).
+                const general = (typeof q.explain === "string" && q.explain.trim()) ? q.explain.trim() : (explainFor(correctIdx) || "");
                 return (
                   <>
-                    <div className="f-card" style={{ marginTop: 12, padding: "12px 14px", background: isRight ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
+                    <div className="f-card" style={{ marginTop: 12, padding: "13px 14px", background: isRight ? "#EFFBF1" : "#FFF7ED", border: "none" }}>
                       {whyWrong && (
-                        <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)", marginBottom: 8 }}><b style={{ color: "var(--err)" }}>❌ Por que está errada: </b>{whyWrong}</p>
+                        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink2)", marginBottom: 9 }}><b style={{ color: "var(--err)" }}>❌ Por que está errada: </b>{whyWrong}</p>
                       )}
-                      <p style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink2)" }}>
+                      <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink2)", marginBottom: general ? 7 : 0 }}>
                         <b style={{ color: "var(--ok)" }}>{isRight ? "✅ Certo!" : "✅ Resposta certa: "}</b>
-                        {isRight ? (whyRight ? " " + whyRight : "") : ("“" + correctText + "”")}
+                        {isRight ? "" : ("“" + correctText + "”")}
                       </p>
+                      {general && (
+                        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink2)" }}><b style={{ color: "var(--ink)" }}>Por quê: </b>{general}</p>
+                      )}
                     </div>
                     <button className="f-btn primary block" style={{ marginTop: 14 }} onClick={next}>{qi + 1 < qs.length ? "Próxima" : "Ver resultado"} <ArrowRight size={18} /></button>
                   </>
@@ -1491,7 +1543,11 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                     <span key={i} style={{ color: speakResult.matched[i] ? "var(--ok)" : "var(--ink3)" }}>{w} </span>
                   )) : speakPhrase}
                 </p>
-                <button className="f-tiny" onClick={() => speak(speakPhrase)}><Volume2 size={14} /> Ouvir a frase</button>
+                <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button className="f-tiny" onClick={() => speak(speakPhrase)}><Volume2 size={14} /> Ouvir a frase</button>
+                  <button className={"f-tiny" + (spkTransOn ? " on" : "")} onClick={toggleSpeakTrans} disabled={spkTransLoading}><Languages size={14} /> {spkTransLoading ? "..." : spkTransOn ? "Ocultar" : "Traduzir"}</button>
+                </div>
+                {spkTransOn && spkTrans && <p className="f-muted" style={{ fontSize: 14, marginTop: 12, fontStyle: "italic" }}>{spkTrans}</p>}
               </div>
 
               <div style={{ display: "flex", justifyContent: "center", margin: "22px 0 6px" }}>
@@ -1539,10 +1595,11 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
                   <button className="f-btn primary block" onClick={onBack}>Voltar ao módulo <ArrowRight size={18} /></button>
                 ) : (
                   <>
-                    <button className="f-btn primary block" onClick={load}><RotateCcw size={16} /> Tentar de novo</button>
+                    <button className="f-btn primary block" onClick={() => load()}><RotateCcw size={16} /> Tentar de novo</button>
                     <button className="f-btn ghost block" onClick={onBack}>Voltar ao módulo</button>
                   </>
                 )}
+                <button className="f-tiny" style={{ alignSelf: "center", marginTop: 4 }} onClick={() => load(true)}><RefreshCw size={13} /> Gerar novas perguntas</button>
               </div>
             </div>
           )}
@@ -1599,7 +1656,7 @@ function ModuleView({ mod, moduleIndex, onBack }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 14.5 }}>{ls.title}</div>
-                <div className="f-faint" style={{ fontSize: 12, fontWeight: 600, marginTop: 1 }}>{ok ? "Concluída · toque para revisar" : open ? "10 perguntas · toque para começar" : "Conclua a anterior"}</div>
+                <div className="f-faint" style={{ fontSize: 12, fontWeight: 600, marginTop: 1 }}>{ok ? "Concluída · toque para revisar" : open ? "Quiz · toque para começar" : "Conclua a anterior"}</div>
               </div>
               {open && <ChevronRight size={18} color="var(--ink3)" style={{ flex: "none" }} />}
             </button>
@@ -1990,6 +2047,7 @@ export default function App() {
 
   const resetAll = () => {
     clearSnapshot();
+    clearAllLessonCache();
     setStage("welcome"); setProfile({ name: "", goal: null, goalLabel: "", level: "A1" });
     setXp(0); setStats({ messages: 0, wordsLearned: 0, pron: 0, sims: 0, lessons: 0, minutes: 0, streak: 1, days: 1 });
     setFavorites(new Set()); setLearnedSet(new Set()); setUnlocked(new Set()); setDoneLessons(new Set()); prevUnlocked.current = new Set();
