@@ -6,7 +6,7 @@ import {
   Volume2, Target, Zap, Plus, Heart, ChevronRight, ArrowRight, ArrowLeft, Plane,
   Briefcase, Utensils, BedDouble, ShoppingBag, Landmark, Building2, Loader2, RotateCcw,
   User, Globe, GraduationCap, Sparkles, Crown, Lock, PartyPopper, Wand2, Trophy, RefreshCw, Lightbulb,
-  Stethoscope, Home, Bus, Flag, Map, Dumbbell
+  Stethoscope, Home, Bus, Flag, Map, Dumbbell, FileText
 } from "lucide-react";
 // Backend integration: AI chat + correction (/api/chat), text-to-speech (/api/tts),
 // speech-to-text recording (/api/stt). useRecorder mirrors the old useSpeech API.
@@ -1141,6 +1141,7 @@ const MODULES = [
 
 // Ferramentas de prática livre (aba "Praticar"). id casa com o roteamento de telas existente.
 const PRACTICE_TOOLS = [
+  { id: "writing", label: "Escrita avaliada", desc: "Escreva e receba nota por critérios (0–9)", icon: FileText, color: "#2F80ED" },
   { id: "chat", label: "Conversar com o Delagassa", desc: "Bate-papo com correção em tempo real", icon: MessageCircle, color: "#FF7A18" },
   { id: "pron", label: "Pronúncia", desc: "Treine sua fala e receba nota", icon: Mic, color: "#2F80ED" },
   { id: "vocab", label: "Vocabulário", desc: "Aprenda palavras novas por tema", icon: BookOpen, color: "#7C5CFA" },
@@ -1807,6 +1808,155 @@ function UKScreen() {
   );
 }
 
+/* ============================ WRITING (escrita avaliada por critérios) ============================ */
+function WritingScreen() {
+  const { profile, addXp, bump } = useApp();
+  const [taskType, setTaskType] = useState("task1");
+  const [task, setTask] = useState(null);
+  const [text, setText] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [loadingTask, setLoadingTask] = useState(false);
+  const [grading, setGrading] = useState(false);
+  const [err, setErr] = useState("");
+  const [showPromptT, setShowPromptT] = useState(false);
+
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const target = (task && task.minWords) || (taskType === "task2" ? 250 : 150);
+
+  const callAI = async (payload) => {
+    const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error("ai");
+    return r.json();
+  };
+
+  const newTask = async (type) => {
+    const t = type || taskType;
+    setTaskType(t); setTask(null); setText(""); setFeedback(null); setErr(""); setShowPromptT(false);
+    setLoadingTask(true);
+    try {
+      const d = await callAI({ mode: "writingTask", taskType: t, level: profile.level });
+      if (!d || !d.prompt) setErr("Não consegui gerar a tarefa. Tente de novo.");
+      else setTask(d);
+    } catch (e) { setErr("Não consegui gerar a tarefa. Tente de novo."); }
+    setLoadingTask(false);
+  };
+
+  const grade = async () => {
+    if (words < 20 || grading) return;
+    setGrading(true); setErr(""); setFeedback(null);
+    try {
+      const promptForAI = (task && task.prompt ? task.prompt : "") + (task && Array.isArray(task.bullets) && task.bullets.length ? " | Deve incluir: " + task.bullets.join("; ") : "");
+      const d = await callAI({ mode: "writingFeedback", taskType, prompt: promptForAI, answer: text, level: profile.level });
+      if (!d || typeof d.band !== "number") setErr("Não consegui avaliar agora. Tente de novo.");
+      else { setFeedback(d); bump("lessons", 1); addXp(20); }
+    } catch (e) { setErr("Não consegui avaliar agora. Tente de novo."); }
+    setGrading(false);
+  };
+
+  const bandColor = (b) => b >= 7 ? "var(--ok)" : b >= 5 ? "var(--gold)" : "var(--err)";
+
+  return (
+    <div className="f-scroll">
+      <div className="f-pad">
+        <div className="f-eyebrow">Escrita avaliada</div>
+        <h2 className="f-h1" style={{ marginTop: 4, marginBottom: 6 }}>Escreva e receba avaliação</h2>
+        <p className="f-muted" style={{ fontSize: 14, marginBottom: 14 }}>Escolha a tarefa, escreva em inglês e receba um nível estimado (0–9) por critérios, com uma versão melhorada.</p>
+
+        <div className="f-seg" style={{ marginBottom: 14 }}>
+          <button className={taskType === "task1" ? "on" : ""} onClick={() => newTask("task1")}>Tarefa 1 · Carta</button>
+          <button className={taskType === "task2" ? "on" : ""} onClick={() => newTask("task2")}>Tarefa 2 · Redação</button>
+        </div>
+
+        {!task && !loadingTask && !err && (
+          <button className="f-btn primary block" onClick={() => newTask(taskType)}><FileText size={18} /> Gerar tarefa</button>
+        )}
+        {loadingTask && (<div style={{ textAlign: "center", padding: 26 }}><Loader2 size={24} className="spin" style={{ color: "var(--coral)" }} /><p className="f-faint" style={{ marginTop: 10, fontSize: 13 }}>Gerando tarefa…</p></div>)}
+        {err && !task && (<div className="f-card f-pad" style={{ padding: 14, textAlign: "center" }}><p className="f-muted" style={{ fontSize: 14 }}>{err} <button className="f-link" onClick={() => newTask(taskType)}>Tentar de novo</button></p></div>)}
+
+        {task && (
+          <>
+            <div className="f-card f-pad" style={{ padding: 16, marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                <span className="f-h2" style={{ fontSize: 16 }}>{task.title || (taskType === "task1" ? "Carta" : "Redação")}</span>
+                <span className="f-pill xp" style={{ background: "#F4EEFB", color: "var(--ink2)" }}>~{target} palavras</span>
+              </div>
+              <p style={{ fontSize: 14.5, lineHeight: 1.5, color: "var(--ink)" }}>{task.prompt}</p>
+              {Array.isArray(task.bullets) && task.bullets.length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  {task.bullets.map((b, i) => (<div className="f-feat" key={i}><span className="ck"><Check size={11} /></span><span>{b}</span></div>))}
+                </div>
+              )}
+              {task.prompt_pt && (
+                <>
+                  <button className={"f-tiny" + (showPromptT ? " on" : "")} style={{ marginTop: 12 }} onClick={() => setShowPromptT((v) => !v)}><Languages size={13} /> {showPromptT ? "Ocultar tradução" : "Traduzir tarefa"}</button>
+                  {showPromptT && <p className="f-muted" style={{ fontSize: 13, marginTop: 10, fontStyle: "italic" }}>{task.prompt_pt}</p>}
+                </>
+              )}
+            </div>
+
+            <textarea className="f-input" style={{ width: "100%", minHeight: 200, maxHeight: 440 }} placeholder="Escreva sua resposta em inglês aqui…" value={text} onChange={(e) => setText(e.target.value)} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "8px 2px 14px" }}>
+              <span className="f-faint" style={{ fontSize: 12.5, fontWeight: 700 }}>{words} palavra(s)</span>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: words >= target ? "var(--ok)" : "var(--ink3)" }}>meta ~{target}</span>
+            </div>
+
+            <button className="f-btn primary block" onClick={grade} disabled={grading || words < 20}>
+              {grading ? <><Loader2 size={18} className="spin" /> Avaliando…</> : <><Check size={18} /> Avaliar minha escrita</>}
+            </button>
+            {words < 20 && <p className="f-faint" style={{ fontSize: 12, textAlign: "center", marginTop: 8 }}>Escreva pelo menos algumas frases para avaliar.</p>}
+            {err && task && <p style={{ fontSize: 13, textAlign: "center", marginTop: 10, color: "var(--err)" }}>{err}</p>}
+
+            {feedback && (
+              <div style={{ marginTop: 18 }}>
+                <div className="f-card f-pad" style={{ padding: 16, textAlign: "center", marginBottom: 12, background: "linear-gradient(135deg,#2A1E45,#3a2a5e)", border: "none", color: "#fff" }}>
+                  <p style={{ fontSize: 12, opacity: .8, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em" }}>Nível estimado</p>
+                  <div className="f-display" style={{ fontSize: 52, color: "#fff" }}>{feedback.band}<span style={{ fontSize: 20, opacity: .7 }}>/9</span></div>
+                  <p style={{ fontSize: 11.5, opacity: .75 }}>estimativa da IA · não é nota oficial</p>
+                </div>
+
+                {Array.isArray(feedback.criteria) && feedback.criteria.map((c, i) => (
+                  <div className="f-card f-pad" key={i} style={{ padding: 13, marginBottom: 9 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 800, fontSize: 14 }}>{c.name}</span>
+                      <span style={{ fontWeight: 800, fontSize: 15, color: bandColor(c.band) }}>{c.band}</span>
+                    </div>
+                    <div className="f-xpbar" style={{ marginBottom: 8 }}><div className="f-xpfill" style={{ width: `${Math.min(100, (Number(c.band) / 9) * 100)}%`, background: bandColor(c.band) }} /></div>
+                    <p className="f-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>{c.comment}</p>
+                  </div>
+                ))}
+
+                {Array.isArray(feedback.strengths) && feedback.strengths.length > 0 && (
+                  <div className="f-card f-pad" style={{ padding: 14, marginTop: 4, marginBottom: 9, background: "#EFFBF1", border: "none" }}>
+                    <p style={{ fontWeight: 800, fontSize: 13.5, color: "var(--ok)", marginBottom: 6 }}>✅ Pontos fortes</p>
+                    {feedback.strengths.map((s, i) => (<p key={i} className="f-muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 4 }}>• {s}</p>))}
+                  </div>
+                )}
+                {Array.isArray(feedback.improvements) && feedback.improvements.length > 0 && (
+                  <div className="f-card f-pad" style={{ padding: 14, marginBottom: 9, background: "#FFF7ED", border: "none" }}>
+                    <p style={{ fontWeight: 800, fontSize: 13.5, color: "var(--coral-d)", marginBottom: 6 }}>🎯 Como melhorar</p>
+                    {feedback.improvements.map((s, i) => (<p key={i} className="f-muted" style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 4 }}>• {s}</p>))}
+                  </div>
+                )}
+                {feedback.corrected && (
+                  <div className="f-card f-pad" style={{ padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontWeight: 800, fontSize: 13.5 }}>Versão melhorada</span>
+                      <button className="f-tiny" onClick={() => speak(feedback.corrected)}><Volume2 size={13} /> Ouvir</button>
+                    </div>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ink)", whiteSpace: "pre-wrap" }}>{feedback.corrected}</p>
+                  </div>
+                )}
+
+                <button className="f-btn ghost block" style={{ marginTop: 14 }} onClick={() => newTask(taskType)}><RefreshCw size={16} /> Nova tarefa</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ============================ DASHBOARD ============================ */
 function DashScreen({ openPlans }) {
   const { profile, xp, stats, unlocked } = useApp();
@@ -1949,7 +2099,7 @@ const TABS = [
 ];
 
 // Telas que vivem "dentro" da aba Praticar (mantêm a aba Praticar destacada).
-const PRACTICE_TABS = ["chat", "pron", "vocab", "grammar", "sim", "uk"];
+const PRACTICE_TABS = ["chat", "pron", "vocab", "grammar", "sim", "uk", "writing"];
 
 export default function App() {
   const [stage, setStage] = useState("welcome");
@@ -2097,6 +2247,7 @@ export default function App() {
               {tab === "grammar" && <GrammarScreen />}
               {tab === "sim" && <SimScreen />}
               {tab === "uk" && <UKScreen />}
+              {tab === "writing" && <WritingScreen />}
               {tab === "dash" && <DashScreen openPlans={() => setSheet("plans")} />}
 
               <div className="f-tabbar">
