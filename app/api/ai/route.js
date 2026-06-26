@@ -126,7 +126,7 @@ export async function POST(req) {
     }
   }
 
-  // ---- 4b) Mini-lição interativa (explicação + 7 perguntas variadas, uma de cada tipo) ----
+  // ---- 4b) Mini-lição interativa (explicação + 6 perguntas variadas, uma de cada tipo) ----
   if (body.mode === "lesson") {
     const focus = body.topic || "everyday English";
     const lvl = body.level || "B1";
@@ -140,22 +140,21 @@ export async function POST(req) {
       `"q":"<the question, written in English so it can be read aloud>",` +
       `"q_pt":"<the question above translated to natural Brazilian Portuguese>",` +
       `"options":["A","B","C","D"],` +
-      `"options_pt":["<A in Brazilian Portuguese>","<B in Brazilian Portuguese>","<C in Brazilian Portuguese>","<D in Brazilian Portuguese>"],` +
       `"answer":0,` +
       `"answer_text":"<the correct option, copied EXACTLY and verbatim from the options array above>",` +
       `"explain":"<one short Brazilian Portuguese sentence explaining why answer_text is the correct answer>",` +
       `"option_explains":["<short PT sentence: why option A is correct if it is the answer, otherwise exactly what makes it wrong>","<same for option B>","<same for option C>","<same for option D>"]` +
       `}]}. ` +
       `RULES:\n` +
-      `- Give EXACTLY 7 questions: ONE of each "type", in this exact order: fill_blank, translate_pt_en, best_reply, word_choice, correct_sentence, find_error, vocab_meaning.\n` +
+      `- Give EXACTLY 6 questions: ONE of each "type", in this exact order: fill_blank, translate_pt_en, best_reply, word_choice, correct_sentence, find_error.\n` +
       `  fill_blank = complete the English sentence. ` +
       `translate_pt_en = give a Brazilian Portuguese phrase and ask for its correct English (put the Portuguese phrase INSIDE "q", e.g. How do you say "<frase em português>" in English?). ` +
       `best_reply = show a short real-life line someone says and ask for the best English response. ` +
       `word_choice = choose the correct word, preposition or collocation. ` +
       `correct_sentence = pick the ONLY grammatically correct sentence. ` +
-      `find_error = pick the sentence that CONTAINS a mistake. ` +
-      `vocab_meaning = meaning or correct use of a key word from this topic.\n` +
+      `find_error = pick the sentence that CONTAINS a mistake.\n` +
       `- Each question has EXACTLY 4 options and exactly ONE correct answer.\n` +
+      `- "options" must contain ONLY the 4 answer choices, each as a plain string. NEVER put field names (like answer, explain, option_explains) or any other JSON inside "options". Return strictly valid JSON with every field exactly as specified above.\n` +
       `- Keep "q" written in English so the audio button works (the only Portuguese inside "q" is the phrase to translate in translate_pt_en).\n` +
       `- "answer" is the 0-based index of the correct option; "answer_text" is that exact same option copied verbatim; "explain" must agree with answer_text.\n` +
       `- TEACHING QUALITY IS THE MOST IMPORTANT THING. Explanations must genuinely TEACH — never just restate the answer.\n` +
@@ -173,7 +172,7 @@ export async function POST(req) {
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: sys }, { role: "user", content: `Tema: ${focus}` }],
           temperature: 0.8,
-          max_tokens: 3500,
+          max_tokens: 4000,
         }),
       });
       if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
