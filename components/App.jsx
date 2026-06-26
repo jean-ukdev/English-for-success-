@@ -1276,7 +1276,7 @@ function UKModule({ mod, onBack, onPlay }) {
 }
 
 // Cache de lições no localStorage: gera uma vez e reabre instantâneo nas próximas.
-const LESSON_CACHE_PREFIX = "efs:lesson:v1:";
+const LESSON_CACHE_PREFIX = "efs:lesson:v2:";
 function loadLessonCache(id) {
   try {
     if (typeof window === "undefined") return null;
@@ -1303,6 +1303,23 @@ function clearAllLessonCache() {
     }
     keys.forEach((k) => window.localStorage.removeItem(k));
   } catch (e) { /* ignora */ }
+}
+
+// Descarta perguntas malformadas (quando a IA "vaza" campos do JSON pra dentro das opções).
+const QFIELD_LEAK = /\b(options_pt|option_explains|answer_text|answer|explain|q_pt|minWords|taskType)\b\s*"?\s*:/;
+function cleanQuestions(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter((q) => {
+    if (!q || typeof q.q !== "string" || !q.q.trim()) return false;
+    if (!Array.isArray(q.options) || q.options.length < 2) return false;
+    for (const o of q.options) {
+      if (typeof o !== "string" || !o.trim()) return false;
+      if (o.length > 200) return false;          // opção absurdamente longa = provável lixo
+      if (QFIELD_LEAK.test(o)) return false;       // opção contém nome de campo do schema = lixo
+    }
+    if (q.answer_text == null && typeof q.answer !== "number") return false;
+    return true;
+  });
 }
 
 // Monta até 3 frases faláveis a partir das RESPOSTAS CERTAS da lição (etapa de fala).
@@ -1355,12 +1372,13 @@ function LessonView({ lesson, lessonId, subtitle, isLastInModule, onBack }) {
       const cached = loadLessonCache(lessonId);
       if (cached) { setData(cached); setBusy(false); return; }
     }
-    // 2. Sem cache (ou pedindo novas perguntas): gera pela IA e guarda pra próxima vez.
+    // 2. Sem cache (ou pedindo novas perguntas): gera pela IA, valida e guarda pra próxima vez.
     setData(null); setBusy(true);
     try {
       const d = await lessonContent(lesson.focus, profile);
-      if (!d || !Array.isArray(d.questions) || d.questions.length === 0) setErr(true);
-      else { setData(d); saveLessonCache(lessonId, d); }
+      const clean = d && Array.isArray(d.questions) ? cleanQuestions(d.questions) : [];
+      if (clean.length < 3) setErr(true);                       // poucas válidas: trata como falha e NÃO cacheia lixo
+      else { const fixed = { ...d, questions: clean }; setData(fixed); saveLessonCache(lessonId, fixed); }
     } catch (e) { setErr(true); }
     setBusy(false);
   };
