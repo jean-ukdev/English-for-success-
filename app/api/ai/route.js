@@ -211,6 +211,78 @@ export async function POST(req) {
     }
   }
 
+  // ---- 4d) Escrita: gerar uma tarefa (Task 1 = carta | Task 2 = redação) ----
+  if (body.mode === "writingTask") {
+    const taskType = body.taskType === "task2" ? "task2" : "task1";
+    const lvl = body.level || "B1";
+    const sys = taskType === "task1"
+      ? `You write Task 1 letter-writing prompts for English learners (CEFR ${lvl}), in the style of a general English proficiency exam. ` +
+        `Create ONE realistic everyday or semi-formal letter situation. Reply with ONLY a JSON object: ` +
+        `{"taskType":"task1","title":"<short English title>","prompt":"<the situation in 1-2 English sentences>","bullets":["<a point the letter must include>","<second point>","<third point>"],"prompt_pt":"<a short Brazilian Portuguese explanation of what to do>","minWords":150}. ` +
+        `Exactly 3 bullets. Keep it doable for level ${lvl}. Vary the topic each time.`
+      : `You write Task 2 essay prompts for English learners (CEFR ${lvl}), in the style of a general English proficiency exam. ` +
+        `Create ONE opinion or discussion essay statement. Reply with ONLY a JSON object: ` +
+        `{"taskType":"task2","title":"<short English title>","prompt":"<the essay statement or question in English, e.g. ending with 'To what extent do you agree or disagree?' or 'Discuss both views and give your own opinion.'>","bullets":[],"prompt_pt":"<a short Brazilian Portuguese explanation of what to do>","minWords":250}. ` +
+        `Keep it doable for level ${lvl}. Vary the topic each time.`;
+    try {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [{ role: "system", content: sys }, { role: "user", content: `Gere a tarefa (${taskType}).` }],
+          temperature: 0.8,
+          max_tokens: 500,
+        }),
+      });
+      if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
+      const data = await r.json();
+      try { return Response.json(JSON.parse(data?.choices?.[0]?.message?.content || "{}")); }
+      catch { return Response.json({ taskType, title: "", prompt: "", bullets: [], prompt_pt: "", minWords: taskType === "task2" ? 250 : 150 }); }
+    } catch (e) {
+      return Response.json({ error: "network_error" }, { status: 502 });
+    }
+  }
+
+  // ---- 4e) Escrita: avaliar a resposta por critérios + nível estimado + versão melhorada ----
+  if (body.mode === "writingFeedback") {
+    const taskType = body.taskType === "task2" ? "task2" : "task1";
+    const lvl = body.level || "B1";
+    const prompt = (body.prompt || "").slice(0, 1500);
+    const answer = (body.answer || "").slice(0, 5000);
+    if (!answer.trim()) return Response.json({ band: 0, criteria: [], strengths: [], improvements: [], corrected: "" });
+    const taskName = taskType === "task1" ? "an informal or semi-formal letter (about 150 words)" : "an opinion essay (about 250 words)";
+    const sys =
+      `You are an experienced, fair English writing examiner. The student (CEFR ${lvl}) wrote ${taskName} for this task: "${prompt}". ` +
+      `Assess the student's text on a 0 to 9 band scale, in the style of a general English proficiency exam, using FOUR criteria: ` +
+      `task achievement, coherence and cohesion, lexical resource (vocabulary), and grammatical range and accuracy. ` +
+      `Be honest — do NOT inflate the score; a beginner text should get a low band. Reply with ONLY a JSON object: ` +
+      `{"band":<overall 0-9, .5 allowed>,"criteria":[{"name":"Cumprimento da tarefa","band":<0-9>,"comment":"<1-2 sentences in Brazilian Portuguese>"},{"name":"Coerência e coesão","band":<0-9>,"comment":"<PT>"},{"name":"Vocabulário","band":<0-9>,"comment":"<PT>"},{"name":"Gramática","band":<0-9>,"comment":"<PT>"}],` +
+      `"strengths":["<a strong point in Brazilian Portuguese>","<another>"],"improvements":["<a concrete, specific fix in Brazilian Portuguese>","<another>","<another>"],` +
+      `"corrected":"<an improved English version of the student's text, about one band higher, keeping the student's ideas>"}. ` +
+      `All comments, strengths and tips in Brazilian Portuguese; the "corrected" text in English. Keep "corrected" focused.`;
+    try {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [{ role: "system", content: sys }, { role: "user", content: answer }],
+          temperature: 0.4,
+          max_tokens: 1800,
+        }),
+      });
+      if (!r.ok) return Response.json({ error: "openai_error", detail: await r.text() }, { status: 502 });
+      const data = await r.json();
+      try { return Response.json(JSON.parse(data?.choices?.[0]?.message?.content || "{}")); }
+      catch { return Response.json({ band: 0, criteria: [], strengths: [], improvements: [], corrected: "" }); }
+    } catch (e) {
+      return Response.json({ error: "network_error" }, { status: 502 });
+    }
+  }
+
   // ---- 5) Padrão: chat (tutor) ou role-play (simulações) ----
   const { mode = "tutor", chatMode = "free", messages = [], level = "B1", goal = "Conversação", scenarioRole = "", opener = "" } = body;
 
